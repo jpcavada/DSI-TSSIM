@@ -1,0 +1,12 @@
+import yard_class as yard
+
+INITIAL_BOX_FILE = "input_files\starting_boxes.ini"
+INITIAL_SERVICES_FILE = "input_files\services.ini"
+BLOCKING_BAYS_FILE = "input_files\layout_blocking_bays.ini"
+
+blocking_file = open(BLOCKING_BAYS_FILE, "r")
+for line in blocking_file.readlines():
+    if not (line[:1] == '#'):
+        tokens = line.strip("\n").split("=")
+
+        print("{} es bloquead por {}".format(tokens[0], tokens[1]))

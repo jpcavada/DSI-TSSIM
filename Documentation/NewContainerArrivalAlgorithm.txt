@@ -1,0 +1,37 @@
+Algoritmo de entrada:
+T_l = tiempo en que un contenedor l debe salir.
+
+B_i: conjunto de bahias que potencialmente bloquean a la bahia i
+B^{-1}_i: conjunto de bahias potencialmente bloqueadas por i
+Notar que si j \in B_i => i \in B^{-1}_j
+
+Llega un contenedor c:
+
+Para i cada bahia del patio:
+	1)Veo si bahia i es valida para poner el contenedor:
+		1.a) i tiene capacidad: tamaño(i) < max_tamaño(i)
+		1.b) i es accesible: 
+			Si para todo k in B_i: 
+				tamaño(k) == 1 OR tamaño(k) <= tamaño(i)
+		1.c) Poner c en i no dejará otra bahia inaccesible:		
+			Si para todo j in B^{-1}_i: tamaño(i) +1 <= tamaño(j)
+
+		Si se cumple 1.a, 1.b y 1.c entonces i \in V_c, conjunto de bahias 
+		validas para ubicar c.
+		
+	2) Clasificamos las bahias validas V_c de la siguiente forma
+		2.a) Sea VE_c subset V_c el conjunto de bahias vacias, es decir VE_c = {j \in V_c : tamaño(j) = 0}. 
+			
+		2.b) Sea V^+_c subset de V_c, conjunto de bahias donde c no bloquea la salida de otros contenedores,
+			es decir Sea j in V_c y s_j el contenedor superior de j. j in V^+_c si y solo si T_s_j >= T_c			
+		
+		2.c) Sea V^-_c subset de V_c, conjunto de bahias donde c bloquea la salida de otros contenedores,
+			es decir Sea j in V_c y s el contenedor superior de j. j in V^-_c si y solo si T_s_j < T_c		
+			
+	3) Elegimos una bahia de acuerdo a la siguiente prioridad:		
+		3a) Si VE_c not empty, entonces se elije aquel que tenga potencialmente bloquee menos bahias (más adentro):
+		 "Justificacion de esto es que futuros contenedores tienen mas informacion para encontrar posicion y por lo tanto
+		 estoy haciendo futuras decisiones mejores a cambio de potencialemente hacer una mala decision ahora.
+				j in \VE_c : min_i CARD(B^{i}
+		3b) Si V^+_c not empty se elije j in V^+_c : min_j: T_s_j - T_c. Es decir, el se pone
+		¿ES MEJOR PONERLO ENCIMA DE LA MAS CERCANA O BLOQUEANDO A LA MAS CERCANA (EN LA PILA DE AL LADO)????

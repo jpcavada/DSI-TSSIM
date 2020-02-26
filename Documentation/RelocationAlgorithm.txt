@@ -1,0 +1,27 @@
+Algoritmo de relocación:
+
+When container c must be retrieved.
+
+1) 	Determine thet set of containers R that need to be relocated before being able to 
+	retrieve container c.
+	
+	Lets considerer that the set R:= {r_1, r_2,..., r_n} is an ordered set, so that r_1 must 
+	be relocated first, then r_2 and so on.
+	
+	Let r_i \in R the i-th container to be relocated. To find r_i new position:
+	
+	2) For each container bay i in the yard, lets determine if i is a canditate bay for relocation:
+		
+		2.a) Bay i must not be full: size(i) < max_size(i)
+		2.b) Bay i must be accesible: for all container k in B_i, size(k) == 1 OR size(k) <= size(i)
+		2.c) Bay i must not block the access to any container involved in the operation:
+				for j in R: j < i, bay(r_i) != bay(r_j) AND bay(r_i) != bay(c)
+		
+		2.d) Relocatin r_i in bay i  will not let another bay innaccesible:		
+			 For all j in B^{-1}_i: size(i) +1 <= size(j)
+			 
+		If i complies with all the last conditions it is added to the set of good candidate bays G, if 
+		only complies with a, b and c, but not d. Witch means it could potentially block the access to a
+		non full bay, it is added to the set of bad candidate bays H.
+		
+	3) For each good candidate bay i in G, we calculate the COST of adding a 
