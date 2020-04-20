@@ -291,7 +291,7 @@ class ContainerYard:
         block_list (list) : a list of the blocks in the yard.
         transfer_cost (list,list)
     '''
-    
+
     def __init__ (self, block_num, block_names=None):
         '''
         Creates a new container yard.
@@ -333,7 +333,7 @@ class ContainerYard:
         :return the block using the block index
         '''
         return self.block_list[index]
-    
+
     def YRD_getBlockByName(self, block_name):
         '''
         :return the Block object by block_name. False if doesn't contain the a bay with that name
@@ -342,10 +342,10 @@ class ContainerYard:
             if block_name == block_iter.name:
                 return block_iter
         return False
-    
+
     def __repr__(self):
        return str(self.block_list)
-   
+
     def YRD_moveInboundContainer(self, box, box_destiny_bay):
         '''
         Moves a new container to a bay, if the destiny doesn't have enough capacity it returns the False.
@@ -527,7 +527,7 @@ class ContainerYard:
 
     def YRD_ReshuffleIndexList(self, new_box, target_bay):
         '''
-        Returns a list of the containers that would be time-blockecd if [new_box] is placed a top of [target_bay]. A
+        Returns a list of the containers that would be time-blocked if [new_box] is placed a top of [target_bay]. A
         container is considered time-blocked if 1) [new_box] Leaving date is after the leaving date of the container AND
          it physically blocks its retrieval (either because is on top or in a blocking bay).
         :param new_box: the container that would be located
@@ -660,17 +660,7 @@ class ContainerYard:
         candidate_bay_RI = []
         candidate_bay_cost = []
 
-        #encontramos el minimo index de las boxes involucradas:
-        # min_involved_box_index = 999
-        # if other_boxes:
-        #     involved_box_index = []
-        #     for involved_box in other_boxes:
-        #         involved_box_block, involved_box_bay = involved_box.BOX_getPosition()
-        #         involved_box_index.append(involved_box_bay.BAY_findBoxIndex(involved_box.BOX_getName()))
-        #     min_involved_box_index = min(involved_box_index)
-        if box.BOX_getName() == "C9-457-4":
-            print('stop')
-        #self.YRD_printYard(4, 12)
+
         for target_block in self.YRD_getBlockList():
             for target_bay in target_block.BLK_getBayList():
                 valid_bay = True
@@ -708,6 +698,7 @@ class ContainerYard:
         print("Para {} se elegio {} de entre:".format(box, candidate_bay_list[min_RI_bay_index]))
         for i in range(0,len(candidate_bay_list)):
             print(candidate_bay_list[i], candidate_bay_RI[i])
+        self.YRD_evaluateBoxNewBay(box, candidate_bay_list, "RIL")
         return candidate_bay_list[min_RI_bay_index]
 
         if candidate_bay_list == []:
@@ -726,6 +717,75 @@ class ContainerYard:
                         print("FIND_RELOC_POS: Selecionada la {} para mover a box {}".format(temp_destiny_bay, box))
                         return temp_destiny_bay
         '''
+
+    def YRD_evaluateBoxNewBay(self, box, accessible_bays, criteria):
+        '''
+        Find witch bay is the best new position for box among the list of candidate bays accordding to criteria (RI,
+        RIL, Min-Max) returns a list of all bays that are good choices.
+        :param box:
+        :param accessible_bays:
+        :param criteria:
+        :return candidate_bays:
+        '''
+        box_get_out_date = box.BOX_getDateOut()
+        if criteria == "RIL":
+            rs_list = [] #a list for all the reshuffle index, populated in the same order that candidate bays.
+            rs_earliest_leaving_time = [] #list with the earliest leave time for each candidate bays
+            for bay_s in accessible_bays:
+                boxes_blocked_by_box_if_moved_to_bay_s = [] #Initialize B_{cs}^{-1}=\phi
+                for boxes in bay_s.BAY_getBoxList():
+                    if boxes.BOX_getDateOut() <= box_get_out_date:
+                        boxes_blocked_by_box_if_moved_to_bay_s.append(boxes)
+                for bay_blocked_by_bay_s in bay_s.BAY_getBlock().BLK_getInvertedBlockingBaysList(bay_s):
+                    if bay_blocked_by_bay_s.BAY_getSize() > 1:
+                        for box_in_blocked_bay in bay_blocked_by_bay_s.BAY_getBoxList():
+                            if box_in_blocked_bay.BOX_getDateOut() <= box_get_out_date:
+                                if bay_s.BAY_getSize() >= bay_blocked_by_bay_s.BAY_findBoxIndex(box_in_blocked_bay.BOX_getName()):
+                                    boxes_blocked_by_box_if_moved_to_bay_s.append(box_in_blocked_bay)
+                rs_list.append(len(boxes_blocked_by_box_if_moved_to_bay_s))
+                #print(boxes_blocked_by_box_if_moved_to_bay_s)
+                leave_time_aux = []
+                for i in boxes_blocked_by_box_if_moved_to_bay_s:
+                    leave_time_aux.append(i.BOX_getDateOut())
+                #print(leave_time_aux)
+                if leave_time_aux:
+                    rs_earliest_leaving_time.append([boxes_blocked_by_box_if_moved_to_bay_s[numpy.argmin(leave_time_aux)],
+                                                    numpy.min(leave_time_aux)])
+                else:
+                    rs_earliest_leaving_time.append([0,0])
+
+            min_rs = numpy.min(rs_list)
+            candidate_list = []     #Lista de todos las BAY con menos bloqueos futuros
+            candidate_first_leaving_time_list = []  #Hora de salida de la primera box en salir de la bays
+            candidate_first_leaving_box_list = []   #Primera BOX en salir.
+            for it in range(len(accessible_bays)):
+                if rs_list[it] == min_rs:
+                    candidate_list.append(accessible_bays[it])
+                    candidate_first_leaving_time_list.append(rs_earliest_leaving_time[it][1])
+                    candidate_first_leaving_box_list.append(rs_earliest_leaving_time[it][0])
+
+            #Elegimos la que tiene el mayor tiempo de salida
+            choosed_bay_is_in_position = numpy.argmax(candidate_first_leaving_time_list)
+            #choosed_bay_is =
+
+            ###DEBUG RELOCATION###
+            print("###### RELOC de box {} ##### ".format(box))
+            print("ACCESSIBLE BAYS \t BLOCKS")
+            for i in range(len(accessible_bays)):
+                print("{} \t {}".format(accessible_bays[i], rs_list[i]))
+            print("CANDIDATE BAYS \t FIRST BOX LEAVING \t EARLIST LEAVE TIME")
+            for i in range(len(candidate_list)):
+                print("{}\t{}\t{}".format(candidate_list[i],
+                                          candidate_first_leaving_time_list[i],
+                                          candidate_first_leaving_box_list[i]))
+
+            print("Elegimos BAY {}, donde la BOX {} es la primera en salir".format(candidate_list[choosed_bay_is_in_position],
+                                                                          candidate_first_leaving_box_list[
+                                                                              choosed_bay_is_in_position])                                                                     )
+
+
+
+
 
 
     def YRD_relocateBox(self, box, destiny_bay):

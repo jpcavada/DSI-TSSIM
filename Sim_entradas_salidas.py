@@ -12,7 +12,14 @@ import simpy
 
 # Global Variables
 START_SIM_CLOCK = 0
-FINAL_SIM_CLOCK = 10800
+FINAL_SIM_CLOCK = 43200
+
+'''
+1 dia = 1440
+1 meses = 43200
+2 meses = 86400
+3 meses = 129600
+'''
 
 # Inicialization Variables
 #YARD_BLOCKS_NAMES = ["R"]
@@ -349,7 +356,7 @@ def GEN_removal(env, yard, sim_res_Crane, leaving_box):
                     destiny_bay = yard.YRD_findRelocationPosition(blocker, involved_boxes)
                     # Si esta bloqueado, Falla!!
                     if yard.YRD_isBoxBlocked(blocker):
-                        raise Exception("Relocating a blocked BOX {} from {}, original loist was {} now is {}, Check code!!".format(blocker, blocker.bay,blockers_list, yard.YRD_isBoxBlocked(blocker)))
+                        raise Exception("Relocating a blocked BOX {} from {}, original list was {} now is {}, Check code!!".format(blocker, blocker.bay,blockers_list, yard.YRD_isBoxBlocked(blocker)))
                     # Llamamos una grua
                     reloc_succ, reloc_cost = yard.YRD_relocateBox(blocker, destiny_bay)
                     if reloc_succ:

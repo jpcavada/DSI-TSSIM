@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-random_state = np.random.RandomState(10)
+random_state = np.random.RandomState(25)
 T_INICIAL = 8 * 60
 T_FINAL = 18 * 60
 FACTOR_DE_ESCALA = 2
@@ -14,7 +14,7 @@ TASA_LLEGADA = [(11, 3.66),
                 (14, 7.05),
                 (18, 8.97)]
 
-TASA_ESTADIA = 12
+TASA_ESTADIA = 12 #dias
 # Limite in
 DIST_ACUMULADA_PROBABILIDAD_SALIDAS = [(8, 0.03452914798206278),
                                        (9, 0.11569506726457399),
@@ -179,7 +179,7 @@ def write_arrival_file(arrival_list, file_name, Min_to_Timestep_coeff = 1):
         ts_leave = int(((i.arrival_day + i.stay_time)*1440 + i.leave_min)/Min_to_Timestep_coeff)
         name = "C{}-{}-{}".format(i.arrival_day, count, i.arrival_day + i.stay_time)
         count = count + 1
-        file.write("{} {} {}\n".format(name, ts_arrival, ts_leave+90000))
+        file.write("{} {} {}\n".format(name, ts_arrival, ts_leave))
 
 write_arrival_file(arrival_list, "input_files/arrivalstest.ini")
 '''
