@@ -447,7 +447,7 @@ def GEN_moveToService(env, yard, sim_res_Crane, box):
                         (blocker.BOX_getName(), data_reloc_call, data_reloc_execute, box.BOX_getName()))
                     #### FIN RELOCACIOES ####################################################
 
-        # Cuando este accesible muevo el contenedor al area de servicio
+        # Cuando este accesible nuevo el contenedor al area de servicio
         move_succ, move_cost = yard.YRD_moveBoxToService(box)
         if move_succ:
             yield env.timeout(move_cost)
