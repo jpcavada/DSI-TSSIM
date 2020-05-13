@@ -5,7 +5,10 @@ Created on Thu Jul 11 16:02:51 2019
 @author: jpcavada
 """
 import numpy
-import warnings
+
+from setup_logger import logger
+print = logger.info
+
 
 DEFAULT_BAY_SIZE = 4
 
@@ -18,7 +21,7 @@ CLOSE_DISTANCE_COST = 1
 MEDIUM_DISTANCE_COST = 3
 LONG_DISTANCE_COST = 7
 
-RELOCATION_CRITERIA = "ALL"
+RELOCATION_CRITERIA = "MM"
 class Box:
     '''
     A container (or Box) object
@@ -415,7 +418,26 @@ class ContainerYard:
             raise Exception ("Failed to found box {}". format(box_name))
         return found_it
 
-    def YRD_findBoxNewPosition(self, box):
+    def YRD_BoxAllocation(self, box, criteria="RELOCATION_CRITERIA"):
+        '''
+        Function to find a new container position.Returns the block and bay index and name were the new container should
+        be located.
+
+        :returns: block, bay : First argument is the destiny block and second return argument is de destiny bay.
+        '''
+        r_bay = False
+        r_block = False
+
+        origin_bay = box.bay
+        print("Buscando lugar para {}".format(box))
+        # 1) Find all accesible Bays
+        accessible_bay_list = self.YRD_findAccessileBays(box)
+        # 2) Call for the new position evaluation rule
+        selected_bay, other_selected_bays = self.YRD_evaluateBoxNewBay(box, accessible_bay_list, RELOCATION_CRITERIA)
+
+        return selected_bay.BAY_getBlock(), selected_bay
+
+    def DEP_YRD_findBoxNewPosition(self, box): #TODO esta función de nuevo
         '''
         Function to find a new container position.
         
@@ -520,6 +542,7 @@ class ContainerYard:
             r_block = blocking_candidate_bay_list[incumbent].BAY_getBlock()
 
         else:
+            self.YRD_printYard(4, 12)
             raise Exception("No available location for {}".format(box.BOX_getName()))
         return r_block, r_bay
 
@@ -541,14 +564,15 @@ class ContainerYard:
                 list_of_blockers.append(list_of_box_in_bay[box_in_same_bay_on_top])
         #Then we check if the container is blocked from the sides, for that we check the block adyacency map.
         list_of_side_blocking_bays = box_block.BLK_getBlockingBaysList(box_bay)
-        for blocking_bay in list_of_side_blocking_bays:
-            if blocking_bay.BAY_getSize() > box_index + 1: ##Criterio para que esté blockeado lateralmente
-                n_blocking_box = -box_bay.BAY_findBoxIndex(box.BOX_getName()) + blocking_bay.BAY_getSize() -1
-                for side_blocking_box in blocking_bay.BAY_getBoxList()[-n_blocking_box:]:
-                    list_of_blockers.append(side_blocking_box)
+        for blocking_bay in list_of_side_blocking_bays: #TODO REVISAR CRITERIO DE BLOQUEO
+            if blocking_bay.BAY_getSize() > 1:
+                if blocking_bay.BAY_getSize() >= box_index + 1: ##Criterio para que esté blockeado lateralmente
+                    n_blocking_box = -box_bay.BAY_findBoxIndex(box.BOX_getName()) + blocking_bay.BAY_getSize()
+                    for side_blocking_box in blocking_bay.BAY_getBoxList()[-n_blocking_box:]:
+                        list_of_blockers.append(side_blocking_box)
         return list_of_blockers[::-1]
 
-    def YRD_ReshuffleIndexList(self, new_box, target_bay):
+    def DEP_YRD_ReshuffleIndexList(self, new_box, target_bay):
         '''
         Returns a list of the containers that would be time-blocked if [new_box] is placed a top of [target_bay]. A
         container is considered time-blocked if 1) [new_box] Leaving date is after the leaving date of the container AND
@@ -630,7 +654,7 @@ class ContainerYard:
             box.removalTime = removal_time
             remove_cost = 1
             return True, remove_cost
-        return False, 0
+        return False, blocking_containers
 
     def YRD_removeBoxFromService (self, box, removal_time=0):
         '''
@@ -669,27 +693,40 @@ class ContainerYard:
             return True
         print("Error: box {} not added, please check".format(box))
 
-    def YRD_findRelocationPosition(self, box, other_boxes):
+    def YRD_findAccessileBays(self, box, other_boxes=None):
+        #TODO Move the pyramid rule from here to after the evaluation of positions.
         '''
-        Returns the most convenient location for a box that is being relocates, using the RI and movementCost as params
-        :param box: the container that is being relocated
-        :param other_boxes: list of all the other boxes involved in the relocation.
-        :return: the bay that is going to be destiny.
-        '''
+        Finds all accessible bays for (re)locating box. This checks for non-full bays that can be accessed from a crane.
+        It also discards all bays where other_boxes are located, as they may be needed to be accessed in future
+        relocations. Note this method enforces the pyramid rule when neceserary. But will disable it if no other options
+        are available.
 
-        origin_bay = box.bay
-        print("FIND_RELOC_POS: buscando lugar para {} desde {}, otros {}".format(box,origin_bay, other_boxes))
+        :param box: the container box that will be allocated
+        :param other_boxes: other container boxes involved in the same movement (default [])
+        :return: the list of all accessible bays.
+        '''
+        #Declarations and safe default value for empty other_boxes.
+        if other_boxes is None: other_boxes = []
         accessible_bay_list = []
-        barely_accessible_list = [] #List of accessible bays that do not comply with piramid rule.
+        barely_accessible_list = []  # List of accessible bays that do not comply with piramid rule.
+        rejection_list = []
+        if other_boxes:
+            lowest_box_name = other_boxes[numpy.argmin([i.bay.BAY_findBoxIndex(i.BOX_getName()) for i in other_boxes])]
+            lowest_box_index = numpy.min([i.bay.BAY_findBoxIndex(i.BOX_getName()) for i in other_boxes])
+            #print("lowest box is {} at index {}".format(lowest_box_index, lowest_box_index))
+        else:
+            lowest_box_index = 99
+            #print("No other boxes")
 
-        #Find all accessible bays
+        # Find all accessible bays
         for target_block in self.YRD_getBlockList():
-            for target_bay in target_block.BLK_getBayList(): #Recorremos todas las bahias del patio.
+            for target_bay in target_block.BLK_getBayList():  # Recorremos todas las bahias del patio.
                 valid_bay = True
-
+                rejection_reason = "{} Not Accessible because: ".format(target_bay)
                 #   0) Check if target_bay is not full
                 if target_bay.BAY_isFull():
                     valid_bay = False
+                    rejection_reason = rejection_reason + "Full "
 
                 #   1) Check if Bay is accessible (block_list is empty). If it is blocked, check if only blocking box is
                 #   the box that is moving.
@@ -698,38 +735,82 @@ class ContainerYard:
                     if boxes_blocking_target_bay[0] == box and boxes_blocking_target_bay[-1] == box:
                         print("bay {} is not accessible, it will be available after {} is removed".format(target_bay, box))
                     else:
-                #        print("bay {} is not accessible, is blocked by {}".format(target_bay, boxes_blocking_target_bay))
+                        #print("bay {} is not accessible, is blocked by {}".format(target_bay, boxes_blocking_target_bay))
                         valid_bay = False
+                        rejection_reason = rejection_reason + "Blocked by {} ".format(boxes_blocking_target_bay)
                 #   2) Check if the target bay is not the same bay of the moving box.
-                if target_bay == origin_bay:
+                if target_bay == box.bay:
                     valid_bay = False
-
+                    rejection_reason = rejection_reason + "Same Bay "
                 #   3) Check if target bay is not the same bay of other boxes that would be moved in this relocation.
                 for b in other_boxes:
                     if b.bay == target_bay:
                         valid_bay = False
-                     #   print("bay {} is the bay of {}".format(target_bay, b))
+                        #print("bay {} is the bay of {}".format(target_bay, b))
+                        rejection_reason = rejection_reason + "Same bay as {} ".format(b)
+                    # 3b) Check if target bay would block the access to other boxes
+                    elif b.bay in target_block.BLK_getInvertedBlockingBaysList(target_bay):
+                        if lowest_box_index == 0 and target_bay.BAY_getSize() < 0:
+                            valid_bay = False
+                            rejection_reason = rejection_reason + "Will block other {} ".format(lowest_box_name)
+                        elif lowest_box_index <= target_bay.BAY_getSize():
+                            valid_bay = False
+                            rejection_reason = rejection_reason + "Will block other {} ".format(lowest_box_name)
 
                 #   4)  Check if target_bay complies with PIRAMID RULE. If it does not, it will me assigned to the
                 #       Alternative accessible list
-                target_bay_blocked_bays_list = target_block.BLK_getInvertedBlockingBaysList(target_bay)
-                for blocked_bay in target_bay_blocked_bays_list:
-                    if target_bay.BAY_getSize() >= blocked_bay.BAY_getSize():
-                        if valid_bay:
-                            barely_accessible_list.append(target_bay)
-                            valid_bay = False
+                if target_bay.BAY_getSize() > 0: #Bays de tamaño 1 nunca bloquean.
+                    target_bay_blocked_bays_list = target_block.BLK_getInvertedBlockingBaysList(target_bay)
+                    for blocked_bay in target_bay_blocked_bays_list:
+                        future_size_of_target_bay = target_bay.BAY_getSize() + 1
+                        # Box comes from the a blocked bay
+                        if blocked_bay == box.bay and future_size_of_target_bay > blocked_bay.BAY_getSize() - 1:
+                            if valid_bay:
+                                barely_accessible_list.append(target_bay)
+                                valid_bay = False
+                                rejection_reason = rejection_reason + "Pyramid (side bay)"
+                        # Box come from another place
+                        elif future_size_of_target_bay > blocked_bay.BAY_getSize():
+                            if valid_bay:
+                                barely_accessible_list.append(target_bay)
+                                valid_bay = False
+                                rejection_reason = rejection_reason + "Pyramid "
 
-                #If target_bay does not check any flag is accessible.
+                # If target_bay does not check any flag is accessible.
                 if valid_bay:
                     accessible_bay_list.append(target_bay)
+                else:
+                    rejection_list.append(rejection_reason)
 
+        if not accessible_bay_list:
+            for i in rejection_list: print(i)
+            self.YRD_printYard(4,12)
+            raise Exception("No accessible bays available")
         if not accessible_bay_list and not barely_accessible_list:
-            raise Exception("There are not accessible bays for relocating {}".format(box))
+            self.YRD_printYard(4, 12)
+            raise Exception("There are not accessible bays for (re)locating {}".format(box))
         if not accessible_bay_list and barely_accessible_list:
             print("No good relocaction bays, disabling pyramid rule")
             accessible_bay_list = barely_accessible_list
+        return accessible_bay_list
 
-        # Call for the new position evaluation rule
+    def YRD_findRelocationPosition(self, box, other_boxes):
+        '''
+        Returns the most convenient location for a box that is being relocated.
+        :param box: the container that is being relocated
+        :param other_boxes: list of all the other boxes involved in the relocation.
+        :return: the bay that is going to be destiny.
+        '''
+
+        origin_bay = box.bay
+        print("FIND_RELOC_POS: buscando lugar para {} desde {}, otros {}".format(box,origin_bay, other_boxes))
+
+        # 1) Find all accesible Bays
+        accessible_bay_list = self.YRD_findAccessileBays(box, other_boxes)
+
+        # 2)
+
+        # 2) Call for the new position evaluation rule
         selected_bay, other_selected_bays = self.YRD_evaluateBoxNewBay(box, accessible_bay_list, RELOCATION_CRITERIA)
 
         #Pensar cómo integrar los costos a la decision. (TODO)

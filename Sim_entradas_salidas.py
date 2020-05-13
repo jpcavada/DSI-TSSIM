@@ -10,9 +10,12 @@ import yard_class
 import numpy
 import simpy
 
+from setup_logger import logger
+print = logger.info
+
 # Global Variables
 START_SIM_CLOCK = 0
-FINAL_SIM_CLOCK = 43200
+FINAL_SIM_CLOCK = 129600
 
 '''
 1 dia = 1440
@@ -37,6 +40,8 @@ MEDIUM_BAYS_FILE = "input_files\layout_bay_distance_medium.ini"
 
 OUTPUT_FILES_FOLDER = "output_files"
 
+
+
 CRANES_NUM = 1
 SERVICE_AREA_SIZE = 2
 ARRIVING_BOXES = 0
@@ -50,6 +55,7 @@ COUNT_NUMBER_OF_BOXES = 0
 
 ###############################       SIMULACION         ###############################
 def main():
+
     # Elementos de la simulacion
 
     sim_enviroment = simpy.Environment()  # CREA EL ENVIROMENT
@@ -288,7 +294,7 @@ def GEN_arrival(env, yard, sim_res_Crane, arriving_box):
     with sim_res_Crane.request() as i_have_a_crane:
         yield i_have_a_crane
         data_crane_time = env.now
-        destiny_block, destiny_bay = yard.YRD_findBoxNewPosition(arriving_box)
+        destiny_block, destiny_bay = yard.YRD_BoxAllocation(arriving_box)
         move_succ, move_cost = yard.YRD_moveInboundContainer(arriving_box, destiny_bay)
         if move_succ:
             print("[" + str(env.now) + "] Grua moviendo a " + str(arriving_box.BOX_getName()) + " a " + str(
@@ -349,22 +355,28 @@ def GEN_removal(env, yard, sim_res_Crane, leaving_box):
                 involved_boxes = blockers_list.copy()
                 involved_boxes.append(leaving_box)
                 #Llamamos a la relocacion de todos los blockers
-                for blocker in blockers_list:
-                    involved_boxes.remove(blocker)
-                    #print(involved_boxes)
-                    #print(blockers_list)
-                    destiny_bay = yard.YRD_findRelocationPosition(blocker, involved_boxes)
-                    # Si esta bloqueado, Falla!!
-                    if yard.YRD_isBoxBlocked(blocker):
-                        raise Exception("Relocating a blocked BOX {} from {}, original list was {} now is {}, Check code!!".format(blocker, blocker.bay,blockers_list, yard.YRD_isBoxBlocked(blocker)))
-                    # Llamamos una grua
-                    reloc_succ, reloc_cost = yard.YRD_relocateBox(blocker, destiny_bay)
-                    if reloc_succ:
-                        data_reloc_call =env.now
-                        yield env.timeout(reloc_cost)
-                        print("[{}] RELOC: se recoloco {} a {}, costo {}".format(env.now, blocker, destiny_bay, reloc_cost))
-                        data_reloc_execute =env.now
-                        DATA_BOX_RELOCATIONS.append((blocker.BOX_getName(), data_reloc_call, data_reloc_execute, leaving_box.BOX_getName()))
+                while blockers_list:
+                    for blocker in blockers_list:
+                        #Find an accessible box to remove
+                        if not yard.YRD_isBoxBlocked(blocker):
+                            blockers_list.remove(blocker)
+                            involved_boxes.remove(blocker)
+                            #print(involved_boxes)
+                            #print(blockers_list)
+                            destiny_bay = yard.YRD_findRelocationPosition(blocker, involved_boxes)
+                            # Si esta bloqueado, Falla!!
+                            if yard.YRD_isBoxBlocked(blocker):
+                                raise Exception("Relocating a blocked BOX {} from {}, original list was {} now is {}, Check code!!".format(blocker, blocker.bay,blockers_list, yard.YRD_isBoxBlocked(blocker)))
+                            # Llamamos una grua
+                            reloc_succ, reloc_cost = yard.YRD_relocateBox(blocker, destiny_bay)
+                            if reloc_succ:
+                                data_reloc_call =env.now
+                                yield env.timeout(reloc_cost)
+                                print("[{}] RELOC: se recoloco {} a {}, costo {}".format(env.now, blocker, destiny_bay, reloc_cost))
+                                data_reloc_execute =env.now
+                                DATA_BOX_RELOCATIONS.append((blocker.BOX_getName(), data_reloc_call, data_reloc_execute, leaving_box.BOX_getName()))
+                            else:
+                                raise Exception("[{}]Relocation of {} failed".format(env.now, blocker))
             #Cuando este accesible retiro el contenedor
             remove_succ, remove_cost = yard.YRD_removeBox(leaving_box, env.now)
         if remove_succ:
@@ -375,6 +387,9 @@ def GEN_removal(env, yard, sim_res_Crane, leaving_box):
             global COUNT_NUMBER_OF_BOXES
             COUNT_NUMBER_OF_BOXES = COUNT_NUMBER_OF_BOXES - 1
             DATA_NUMBER_OF_BOXES.append((data_removal_execute, COUNT_NUMBER_OF_BOXES))
+        else:
+            yard.YRD_printYard(4,12)
+            raise Exception("Box {} failed to be removed, blocked by {}".format(leaving_box, remove_cost))
 
 '''
 def GEN_relocation(env, yard, sim_res_Crane, relocating_box):
@@ -457,7 +472,7 @@ def GEN_moveFromService(env, yard, sim_res_Crane, box):
     print("[{}] Box {} is leaving service area".format(env.now, box))
     with sim_res_Crane.request() as i_have_a_crane:
         yield i_have_a_crane
-        destiny_block, destiny_bay = yard.YRD_findBoxNewPosition(box)
+        destiny_block, destiny_bay = yard.YRD_BoxAllocation(box)
         move_succ, move_cost = yard.YRD_moveInboundContainer(box, destiny_bay)
         if move_succ:
             print("[" + str(env.now) + "] Crane moving " + str(box.BOX_getName()) + " to " + str(
@@ -551,6 +566,10 @@ def export_data(data_string_list, file_name):
             string_line = string_line + str(item) + ","
         file.write(string_line + "\n")
     file.close()
+
+
 #################   Ejecutor    ################
+
+
 if __name__ == '__main__':
     main()

@@ -44,7 +44,7 @@ def main():
 
 #    #3 Agregamos todos los contenedores al terminal
     for cont in Box_arrival_list:
-        bl,ba = patio.YRD_findBoxNewPosition(cont)
+        bl,ba = patio.YRD_BoxAllocation(cont)
         print(str(cont) +" asignado a " + str(bl.BOX_getName()) + " " + str(ba.BOX_getName()))
         print("Capacidad de " + ba.BOX_getName() + " es " + str(ba.BAY_getSize()))
         print(patio.YRD_moveInboundContainer(cont, ba))
