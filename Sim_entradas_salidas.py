@@ -9,19 +9,25 @@ Inicio: 19-08-2019
 import yard_class
 import numpy
 import simpy
+import sys, getopt, os
 
-from setup_logger import logger
+import logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger('sim_log')
 print = logger.info
 
 # Global Variables
+INSTANCE_NAME = "NONAME"
 START_SIM_CLOCK = 0
-FINAL_SIM_CLOCK = 129600
-
+FINAL_SIM_CLOCK = 259200
+START_RECOUNT_TIME = 43200
+END_RECOUND_TIME = 259200
 '''
 1 dia = 1440
 1 meses = 43200
 2 meses = 86400
 3 meses = 129600
+180 dias = 259200
 '''
 
 # Inicialization Variables
@@ -31,15 +37,16 @@ BAYS_WIDE_NAMES = ["A", "B", "X", "Y"]
 #BAYS_WIDE_NAMES = ["A", "B"]
 BAYS_LONG_SIZE = 12
 BAYS_HIGH_SIZE = 4
+
 INITIAL_BOX_FILE = r"input_files\arrivalstest.ini"
 INITIAL_SERVICE_FILE = "input_files\services.ini"
-BLOCKING_BAYS_FILE = "input_files\layout_blocking_bays.ini"
 
+BLOCKING_BAYS_FILE = "input_files\layout_blocking_bays.ini"
 CLOSE_BAYS_FILE = "input_files\layout_bay_distance_close.ini"
 MEDIUM_BAYS_FILE = "input_files\layout_bay_distance_medium.ini"
 
 OUTPUT_FILES_FOLDER = "output_files"
-
+RELOCATION_CRITERIA = ""
 
 
 CRANES_NUM = 1
@@ -48,13 +55,40 @@ ARRIVING_BOXES = 0
 
 DATA_BOX_ARRIVALS = [("#BOX_NAME", "CALL_TIME", "CRANE_TIME", "EXECUTION_TIME")]
 DATA_BOX_REMOVALS = [("#BOX_NAME", "CALL_TIME", "CRANE_TIME", "EXECUTION_TIME", "RELOCATIONS")]
-DATA_BOX_RELOCATIONS = [("#BOX_NAME", "CALL_TIME", "EXECUTION_TIME", "CALLER_BOX")]
+DATA_BOX_RELOCATIONS = [("#BOX_NAME", "CALL_TIME", "EXECUTION_TIME", "CALLER_BOX", "MOVCOST")]
 DATA_BOX_SERVICE = [("#BOX_NAME", "START_TIME", "EXECUTION_TIME", "END_TIME")]
 DATA_NUMBER_OF_BOXES = [("#TIMESTEP","BOXES_IN_YARD")]
 COUNT_NUMBER_OF_BOXES = 0
 
+DATA_SNAPSHOTS = []
+DATA_NUMBER_OF_BOXES_DAY = []
+
 ###############################       SIMULACION         ###############################
-def main():
+def main(argv):
+
+    # Read Configuration parameters and files
+    try:
+        opts, args = getopt.getopt(argv, "",["name=", "arrivals=", "criteria=", "outputdir="])
+    except getopt.GetoptError:
+        print("error")
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '--name':
+            global INSTANCE_NAME
+            INSTANCE_NAME = arg
+        elif opt in ("--arrivals"):
+            global INITIAL_BOX_FILE
+            INITIAL_BOX_FILE = arg
+        elif opt in ("--criteria"):
+            global RELOCATION_CRITERIA
+            RELOCATION_CRITERIA = arg
+        elif opt in ("--outputdir"):
+            global OUTPUT_FILES_FOLDER
+            OUTPUT_FILES_FOLDER = arg
+            if not os.path.exists(OUTPUT_FILES_FOLDER):
+                os.makedirs(OUTPUT_FILES_FOLDER)
+
+    logger.addHandler(logging.FileHandler(OUTPUT_FILES_FOLDER + INSTANCE_NAME + '.log', 'a'))
 
     # Elementos de la simulacion
 
@@ -66,7 +100,7 @@ def main():
 
     ###############################     INICIALIZACION     ###############################
     # CREAMOS EL PATIO con los blockes YARD_BLOCK_NAMES
-    patio = yard_class.ContainerYard(len(YARD_BLOCKS_NAMES), YARD_BLOCKS_NAMES)
+    patio = yard_class.ContainerYard(len(YARD_BLOCKS_NAMES), YARD_BLOCKS_NAMES, relocation_criteria=RELOCATION_CRITERIA)
 
     # A CADA BLOCK SE LE AGREGAN LOS BAHIAS CORRESPONDIENTES
     for block in patio.YRD_getBlockList():
@@ -120,7 +154,11 @@ def main():
     service_list = INI_readSimpleServices(master_box_list, print_to_console=True)
     for servicio in service_list:
         sim_enviroment.process(GEN_services(sim_enviroment, patio, sim_res_CRANES, sim_res_SERVICE_SLOT, servicio))
-
+    '''
+    PROCESO DE RECOPILACION DATOS
+    '''
+    sim_enviroment.process(GEN_snapshots(sim_enviroment, patio, 1440*5))
+    sim_enviroment.process(GEN_boxInYardReport(sim_enviroment, patio, 1440))
     #----------------------------- EJECUCION ---------------------------------------#
     print("Iniciando simulacion")
     sim_enviroment.run(until=FINAL_SIM_CLOCK)
@@ -130,7 +168,7 @@ def main():
     print("------------------------- Fin Simulacion-----------------------")
     print("=========== FINAL YARD LAYOUT =============")
     patio.YRD_printYard(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE)
-
+    export_snapshot(DATA_SNAPSHOTS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_snapshots.txt")
     print("============= REMOVED BOXES ===============")
     print(patio.removed_box_list)
 
@@ -138,21 +176,23 @@ def main():
     print(sim_res_CRANES.data)
     print("=========== REGISTIO EVENTOS: ARRIVALS ==============")
     print(DATA_BOX_ARRIVALS)
-    export_data(DATA_BOX_ARRIVALS, OUTPUT_FILES_FOLDER + "\export_arrivals.txt")
+    export_data(DATA_BOX_ARRIVALS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_arrivals.txt")
     print("=========== REGISTIO EVENTOS: REMOVALS ==============")
     print(DATA_BOX_REMOVALS)
-    export_data(DATA_BOX_REMOVALS, OUTPUT_FILES_FOLDER + "\export_removals.txt")
+    export_data(DATA_BOX_REMOVALS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_removals.txt")
     print("=========== REGISTIO EVENTOS: RELOCATIONS ==============")
     print(DATA_BOX_RELOCATIONS)
-    export_data(DATA_BOX_RELOCATIONS, OUTPUT_FILES_FOLDER + "\export_relocations.txt")
+    export_data(DATA_BOX_RELOCATIONS, OUTPUT_FILES_FOLDER +'\\' + INSTANCE_NAME + "_relocations.txt")
     print("=========== REGISTIO EVENTOS: RELOCATIONS ==============")
     print(DATA_BOX_SERVICE)
 
 
-    export_data(DATA_BOX_SERVICE, OUTPUT_FILES_FOLDER + "\export_services.txt")
-    export_data(DATA_NUMBER_OF_BOXES, OUTPUT_FILES_FOLDER + r"\export_box_counter.txt")
+    export_data(DATA_BOX_SERVICE, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_services.txt")
+    #export_data(DATA_NUMBER_OF_BOXES, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_box_counter.txt")
+    export_snapshot(DATA_NUMBER_OF_BOXES_DAY, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_box_counter_day.txt" )
 
 ###############################     RUTINAS DE INICIALIZACION   ###############################
+
 def INI_createAdjacencyTable(yard, layout_blocking_bays_file=BLOCKING_BAYS_FILE):
     '''
     In this function define all the adjacency (blocked and blocking) bays.
@@ -374,7 +414,7 @@ def GEN_removal(env, yard, sim_res_Crane, leaving_box):
                                 yield env.timeout(reloc_cost)
                                 print("[{}] RELOC: se recoloco {} a {}, costo {}".format(env.now, blocker, destiny_bay, reloc_cost))
                                 data_reloc_execute =env.now
-                                DATA_BOX_RELOCATIONS.append((blocker.BOX_getName(), data_reloc_call, data_reloc_execute, leaving_box.BOX_getName()))
+                                DATA_BOX_RELOCATIONS.append((blocker.BOX_getName(), data_reloc_call, data_reloc_execute, leaving_box.BOX_getName(), reloc_cost))
                             else:
                                 raise Exception("[{}]Relocation of {} failed".format(env.now, blocker))
             #Cuando este accesible retiro el contenedor
@@ -459,7 +499,7 @@ def GEN_moveToService(env, yard, sim_res_Crane, box):
                                                                             reloc_cost))
                     data_reloc_execute = env.now
                     DATA_BOX_RELOCATIONS.append(
-                        (blocker.BOX_getName(), data_reloc_call, data_reloc_execute, box.BOX_getName()))
+                        (blocker.BOX_getName(), data_reloc_call, data_reloc_execute, box.BOX_getName(), reloc_cost))
                     #### FIN RELOCACIOES ####################################################
 
         # Cuando este accesible nuevo el contenedor al area de servicio
@@ -544,6 +584,29 @@ def GEN_services (env, yard, sim_res_Crane, sim_res_Service_slot, service):
     print("[{}] Service of {} is complete".format(env.now, service_boxes))
     DATA_BOX_SERVICE.append((str(service_boxes), str(service.start_time), str(data_execution_time),str(data_end_time)))
 
+def GEN_snapshots(env, yard, snap_interval):
+    '''
+    A intervalos regulares actualiza los reportes
+    '''
+    global DATA_SNAPSHOTS
+    #Esperamos al inicio del periodo de test
+    yield env.timeout(START_RECOUNT_TIME)
+    DATA_SNAPSHOTS.append('Yard @'+str(env.now)+'\n'+yard.YRD_exportYardSnapShot(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE))
+    while env.now < END_RECOUND_TIME:
+        yield env.timeout(snap_interval)
+        #print('taking snapshot')
+        snap = yard.YRD_exportYardSnapShot(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE)
+        #print(snap)
+        DATA_SNAPSHOTS.append('Yard @'+str(env.now)+'\n'+ snap)
+
+def GEN_boxInYardReport(env, yard, report_interval):
+    global DATA_NUMBER_OF_BOXES_DAY
+    yield env.timeout(START_RECOUNT_TIME)
+    DATA_NUMBER_OF_BOXES_DAY.append(str(env.now) + ',' + str(COUNT_NUMBER_OF_BOXES))
+    while env.now < END_RECOUND_TIME:
+        yield env.timeout(report_interval)
+        DATA_NUMBER_OF_BOXES_DAY.append(str(env.now) + ',' + str(COUNT_NUMBER_OF_BOXES))
+
 class MonitoredResource(simpy.Resource):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -567,9 +630,13 @@ def export_data(data_string_list, file_name):
         file.write(string_line + "\n")
     file.close()
 
+def export_snapshot(data_string_list, file_name):
+    file = open(file_name, "w+")
+    for line in data_string_list:
+        file.write(line + "\n")
+    file.close()
 
 #################   Ejecutor    ################
 
-
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])

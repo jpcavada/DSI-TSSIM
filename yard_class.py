@@ -6,8 +6,13 @@ Created on Thu Jul 11 16:02:51 2019
 """
 import numpy
 
-from setup_logger import logger
-print = logger.info
+import logging
+
+logger = logging.getLogger("sim_log")
+
+#logging.basicConfig(level=logging.INFO, format='%(message)s')
+#logger = logging.getLogger('sim_log')
+#print = logger.info
 
 
 DEFAULT_BAY_SIZE = 4
@@ -17,9 +22,9 @@ COST_TABLE = {
                 "M": 3,
                 "L": 7
             }
-CLOSE_DISTANCE_COST = 1
-MEDIUM_DISTANCE_COST = 3
-LONG_DISTANCE_COST = 7
+#CLOSE_DISTANCE_COST = 1
+#MEDIUM_DISTANCE_COST = 3
+#LONG_DISTANCE_COST = 7
 
 RELOCATION_CRITERIA = "MM"
 class Box:
@@ -285,7 +290,7 @@ class Block:
         '''
         self.adjacency_blocking_map[blocked_bay_name].append(self.BLK_getBayByName(blocking_bay_name))
         self.invert_adjacency_blocking_map[blocking_bay_name].append(self.BLK_getBayByName(blocked_bay_name))
-        print("Added Adjacency: bay {} is now blocked by bay {}".format(blocked_bay_name, blocking_bay_name))
+        logger.info("Added Adjacency: bay {} is now blocked by bay {}".format(blocked_bay_name, blocking_bay_name))
 
     def BLK_getBlockingBaysList(self, blocked_bay):
         '''
@@ -318,7 +323,7 @@ class ContainerYard:
         transfer_cost (list,list)
     '''
 
-    def __init__ (self, block_num, block_names=None):
+    def __init__ (self, block_num, block_names=None, relocation_criteria=RELOCATION_CRITERIA):
         '''
         Creates a new container yard.
         
@@ -333,6 +338,8 @@ class ContainerYard:
         self.service_list_pending = []
         self.service_list_complete = []
         self.boxes_in_service = []
+        global RELOCATION_CRITERIA
+        RELOCATION_CRITERIA = relocation_criteria
 
         for i in range(block_num):
             if block_names==None:
@@ -429,7 +436,7 @@ class ContainerYard:
         r_block = False
 
         origin_bay = box.bay
-        print("Buscando lugar para {}".format(box))
+        logger.info("Buscando lugar para {}".format(box))
         # 1) Find all accesible Bays
         accessible_bay_list = self.YRD_findAccessileBays(box)
         # 2) Call for the new position evaluation rule
@@ -468,7 +475,7 @@ class ContainerYard:
             if not(r_bay.BAY_isFull()) and not(self.YRD_isBayBlocked(r_bay)):
                 need_to_find_location = False
             else:
-                print("Intento mover {} a {} pero es inaccesible".format(box.BOX_getName(), str(r_bay)))
+                logger.info("Intento mover {} a {} pero es inaccesible".format(box.BOX_getName(), str(r_bay)))
         '''
         #Here is the version of the code implementing the basic sorting and reposition algorith;
         r_bay = None
@@ -678,23 +685,23 @@ class ContainerYard:
     def YRD_addNewIntialBox(self, box, bay_name, block_name):
         block = self.YRD_getBlockByName(block_name)
         if not(block):
-            print("Error: block_name {} not found".format(block_name))
+            logger.info("Error: block_name {} not found".format(block_name))
             return False
 
         bay = block.BLK_getBayByName(bay_name)
         if not(bay):
-            print("Error: bay name {} not found".format(bay_name))
+            logger.info("Error: bay name {} not found".format(bay_name))
             return False
 
         box_added_ok = bay.BAY_addBox(box)
         if box_added_ok:
             box.BOX_setPosition(block, bay)
-            print("{} added to bay {}".format(box, bay))
+            logger.info("{} added to bay {}".format(box, bay))
             return True
-        print("Error: box {} not added, please check".format(box))
+
+        raise Exception("Error: box {} not added, please check".format(box))
 
     def YRD_findAccessileBays(self, box, other_boxes=None):
-        #TODO Move the pyramid rule from here to after the evaluation of positions.
         '''
         Finds all accessible bays for (re)locating box. This checks for non-full bays that can be accessed from a crane.
         It also discards all bays where other_boxes are located, as they may be needed to be accessed in future
@@ -733,7 +740,7 @@ class ContainerYard:
                 boxes_blocking_target_bay = self.YRD_isBayBlocked(target_bay)
                 if boxes_blocking_target_bay:
                     if boxes_blocking_target_bay[0] == box and boxes_blocking_target_bay[-1] == box:
-                        print("bay {} is not accessible, it will be available after {} is removed".format(target_bay, box))
+                        logger.info("bay {} is not accessible, it will be available after {} is removed".format(target_bay, box))
                     else:
                         #print("bay {} is not accessible, is blocked by {}".format(target_bay, boxes_blocking_target_bay))
                         valid_bay = False
@@ -783,14 +790,14 @@ class ContainerYard:
                     rejection_list.append(rejection_reason)
 
         if not accessible_bay_list:
-            for i in rejection_list: print(i)
+            for i in rejection_list: logger.critcal(i)
             self.YRD_printYard(4,12)
             raise Exception("No accessible bays available")
         if not accessible_bay_list and not barely_accessible_list:
             self.YRD_printYard(4, 12)
             raise Exception("There are not accessible bays for (re)locating {}".format(box))
         if not accessible_bay_list and barely_accessible_list:
-            print("No good relocaction bays, disabling pyramid rule")
+            logger.info("No good relocaction bays, disabling pyramid rule")
             accessible_bay_list = barely_accessible_list
         return accessible_bay_list
 
@@ -803,7 +810,7 @@ class ContainerYard:
         '''
 
         origin_bay = box.bay
-        print("FIND_RELOC_POS: buscando lugar para {} desde {}, otros {}".format(box,origin_bay, other_boxes))
+        logger.info("FIND_RELOC_POS: buscando lugar para {} desde {}, otros {}".format(box,origin_bay, other_boxes))
 
         # 1) Find all accesible Bays
         accessible_bay_list = self.YRD_findAccessileBays(box, other_boxes)
@@ -874,9 +881,9 @@ class ContainerYard:
 
             '''
             ### DEBUG RELOCATION 1###
-            print("ACCESSIBLE BAYS \t NUMBER OF BLOCKS")
+            logger.debug("ACCESSIBLE BAYS \t NUMBER OF BLOCKS")
             for i in range(len(accessible_bays)):
-                print("{} \t {}".format(accessible_bays[i], rs_list[i]))
+                logger.debug("{} \t {}".format(accessible_bays[i], rs_list[i]))
             ### END DEBUG RELOCATION 1 #####
             '''
             #   Find all the stacks tha have a minimun number of blocks.
@@ -893,9 +900,9 @@ class ContainerYard:
                     candidate_list_stack_size.append((accessible_bays[it].BAY_getSize()))
             '''
             #### DEBUG RELOCATION 2 ####
-            print("CANDIDATE BAYS \t FIRST BOX LEAVING \t EARLIST LEAVE TIME")
+            logger.debug("CANDIDATE BAYS \t FIRST BOX LEAVING \t EARLIST LEAVE TIME")
             for i in range(len(candidate_list)):
-                print("{}\t{}\t{}".format(candidate_list[i],
+                logger.debug("{}\t{}\t{}".format(candidate_list[i],
                                           candidate_first_leaving_time_list[i],
                                           candidate_first_leaving_box_list[i]))
             ### END DEBUG RELOCATION 2 ####
@@ -911,14 +918,14 @@ class ContainerYard:
                 selected_bay = min_stack_candidate_list[0]
                 all_selected_bays = min_stack_candidate_list
 
-                print("RI choosed {}, Other options are {}".format(selected_bay, all_selected_bays))
+                logger.info("RI choosed {}, Other options are {}".format(selected_bay, all_selected_bays))
 
             if criteria in ["RIL","ALL"]:
                 #Elegimos la que tiene el mayor tiempo de salida
                 selected_bay= candidate_list[numpy.argmax(candidate_first_leaving_time_list)]
                 all_selected_bays = candidate_list
 
-                print("RIL would choose {}, Other options are {}".format(selected_bay, all_selected_bays))
+                logger.info("RIL would choose {}, Other options are {}".format(selected_bay, all_selected_bays))
 
             if criteria in ["MM","ALL"]:
                 bays_with_no_relocation_list_leavetime = []
@@ -940,7 +947,7 @@ class ContainerYard:
 
                     selected_bay = bays_with_no_relocation_list_leavetime[numpy.argmin([i[0] for i in bays_with_no_relocation_list_leavetime])][1]
                     all_selected_bays = bays_with_no_relocation_list_leavetime
-                    print("MM would choose {} (No future relocations)".format(selected_bay))
+                    logger.info("MM would choose {} (No future relocations)".format(selected_bay))
 
                 elif bays_with_relocations_list_leavetime:
                     #print("No bays without relocations available")
@@ -948,10 +955,10 @@ class ContainerYard:
                     #    print(a)
                     selected_bay = bays_with_relocations_list_leavetime[numpy.argmax([i[0] for i in bays_with_relocations_list_leavetime])][1]
                     all_selected_bays = bays_with_relocations_list_leavetime
-                    print("MM would choose {} (With future relocations)".format(selected_bay))
+                    logger.info("MM would choose {} (With future relocations)".format(selected_bay))
 
         #RETURN choosen bay and all other candidate bays.
-        print("Choosed BAY {} using {}".format(selected_bay, criteria))
+        logger.info("Choosed BAY {} using {}".format(selected_bay, criteria))
         return selected_bay, all_selected_bays
 
     def YRD_relocateBox(self, box, destiny_bay):
@@ -980,17 +987,36 @@ class ContainerYard:
         Prints tehe current status of the container yard
         :param wide_number:
         :param long_number:
-        :return:
+        :return: yard string
         '''
         for block in self.YRD_getBlockList():
-            print(block.BLK_getName())
+            logger.info(block.BLK_getName())
             for i in range(long_number):
                 aux_string = ""
                 for j in range(wide_number):
                     aux_string = aux_string + str(block.BLK_getBay(i+long_number*j))
-                print(aux_string)
+                logger.info(aux_string)
 
-##### SERVICIOS: LOGICAL ##############
+    def YRD_exportYardSnapShot(self, wide_number, long_number):
+        '''
+        Returns a string with current status of the container yard
+        :param wide_number:
+        :param long_number:
+        :return: yard string
+        '''
+        logger.info("SNAPSHOT GENERATED")
+        snapshot_string = ""
+        for block in self.YRD_getBlockList():
+            snapshot_string = snapshot_string + block.BLK_getName() + "\n"
+            for i in range(long_number):
+                aux_string = ""
+                for j in range(wide_number):
+                    aux_string = aux_string + str(block.BLK_getBay(i+long_number*j))
+                snapshot_string = snapshot_string + aux_string + "\n"
+        #print(snapshot_string)
+        return snapshot_string
+
+    ##### SERVICIOS: LOGICAL ##############
     def YRD_addNewService(self, containers_list, due_time, service_lenght):
         aux_service = Service(containers_list, due_time, service_lenght)
         self.service_list_pending.append(aux_service)
@@ -1029,7 +1055,7 @@ class ContainerYard:
         :return: True if box is in service
         '''
         if box.in_service:
-                print("{} is in service area".format(box))
+                logger.info("{} is in service area".format(box))
                 return True
         return False
 

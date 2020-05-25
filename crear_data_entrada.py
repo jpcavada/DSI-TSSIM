@@ -1,13 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
-random_state = np.random.RandomState(25)
+OUTPUT_FOLDER = "INSTANCES\INSTANCES_180D_F3"
+random_state = None
 T_INICIAL = 8 * 60
 T_FINAL = 18 * 60
-FACTOR_DE_ESCALA = 2
-DIAS = 90
+FACTOR_DE_ESCALA = 1.75
+DIAS = 180
 SERVICE_CHANCE = 0.15
-RANGO_SERVICIO_EN_HORA = [1,4]
+RANGO_SERVICIO_EN_HORA = [1, 4]
 
 # Tasa de llegada, (limite inferior del intervalo, tasa minutos)
 TASA_LLEGADA = [(11, 3.66),
@@ -99,76 +101,6 @@ def crear_llegadas_dia():
                 I = I + 1
     return llegadas_dia
 
-
-# Primero creamos todas las llegades de todos los dias, estas se guardan en un arreglo para cada día.
-llegadas_dias = []
-todas_horas_llegada_dia = []
-for dia in range(DIAS):
-    llegadas_dias.append(crear_llegadas_dia())
-
-
-print(llegadas_dias)
-
- #Graficos solo para ver que no pase nada raro
-
-
-cantidad_llegadas_cada_dia =[]
-
-for i in llegadas_dias:
-    cantidad_llegadas_cada_dia.append(len(i))
-
-print(cantidad_llegadas_cada_dia)
-plt.figure()
-plt.bar(range(0,DIAS), cantidad_llegadas_cada_dia)
-plt.plot(np.linspace(0,DIAS,2), [np.average(cantidad_llegadas_cada_dia),np.average(cantidad_llegadas_cada_dia)], lw=2, color='red')
-
-print(np.average(cantidad_llegadas_cada_dia))
-#plt.figure()
-#plt.hist(np.diff(llegadas_dias), bins='auto')
-
-
-# Para cada llegada creamos un objeto arrival y le generamos la información faltante, queda guardados en una lista
-arrival_list = []
-for dia in range(len(llegadas_dias)):
-    for arrival in llegadas_dias[dia]:
-        new_arrival = Arrival(dia, arrival)
-        arrival_list.append(new_arrival)
-
-#Estadisticos
-todas_llegadas = []
-todas_estadias = []
-todas_salidas = []
-todas_servicios_len = []
-
-for i in arrival_list:
-    todas_llegadas.append(i.arrival_min)
-    todas_estadias.append(i.stay_time)
-    todas_salidas.append(i.leave_min)
-    if i.service == True:
-        todas_servicios_len.append(i.service_len)
-
-
-
-fig, a = plt.subplots(2,2)
-a[0][0].set_title("Llegadas")
-a[0][0].set_xlabel("Minuto del día")
-a[0][0].hist(todas_llegadas, bins=11)
-
-
-a[0][1].set_title("Salidas")
-a[0][1].set_xlabel("Minuto del día")
-a[0][1].hist(todas_salidas, bins=11)
-
-
-a[1][0].set_title("Tiempo de Estadía")
-a[1][0].set_xlabel("Número de días")
-a[1][0].hist(todas_estadias, bins='auto')
-
-
-a[1][1].set_title("Duración Servicios")
-a[1][1].set_xlabel("Minuto del día")
-a[1][1].hist(todas_servicios_len, bins=[1,2,3,4,5])
-
 #WRITE ARRIVAL FILE
 
 def write_arrival_file(arrival_list, file_name, Min_to_Timestep_coeff = 1):
@@ -181,16 +113,121 @@ def write_arrival_file(arrival_list, file_name, Min_to_Timestep_coeff = 1):
         count = count + 1
         file.write("{} {} {}\n".format(name, ts_arrival, ts_leave))
 
-write_arrival_file(arrival_list, "input_files/arrivalstest.ini")
-'''
-def find_probability(probability, dist):
+def main(seed, output_file_name, grap=False):
+    global random_state
+    random_state = np.random.RandomState(seed)
+    # Primero creamos todas las llegades de todos los dias, estas se guardan en un arreglo para cada día.
+    llegadas_dias = []
+    todas_horas_llegada_dia = []
+    for dia in range(DIAS):
+        llegadas_dias.append(crear_llegadas_dia())
 
-    for n,p in dist:
-        if probability <= p:
-            return n
 
-for i in range(10):
-    random_number = np.random.rand()
-    n = find_probability(random_number, DIST_ACUMULADA_PROBABILIDAD_SALIDAS)
-    print("{} cae en el bin {}".format(random_number, n))
-'''
+    print(llegadas_dias)
+
+    # Para cada llegada creamos un objeto arrival y le generamos la información faltante, queda guardados en una lista
+    arrival_list = []
+    for dia in range(len(llegadas_dias)):
+        for arrival in llegadas_dias[dia]:
+            new_arrival = Arrival(dia, arrival)
+            arrival_list.append(new_arrival)
+    import os
+    if not os.path.exists(OUTPUT_FOLDER):
+        os.makedirs(OUTPUT_FOLDER)
+    write_arrival_file(arrival_list, OUTPUT_FOLDER + "\\" + output_file_name)
+     #Graficos solo para ver que no pase nada raro
+    if grap == True:
+
+        cantidad_llegadas_cada_dia =[]
+
+        for i in llegadas_dias:
+            cantidad_llegadas_cada_dia.append(len(i))
+
+        print(cantidad_llegadas_cada_dia)
+        plt.figure()
+        plt.bar(range(0,DIAS), cantidad_llegadas_cada_dia)
+        plt.plot(np.linspace(0,DIAS,2), [np.average(cantidad_llegadas_cada_dia),np.average(cantidad_llegadas_cada_dia)], lw=2, color='red')
+
+        print(np.average(cantidad_llegadas_cada_dia))
+        #plt.figure()
+        #plt.hist(np.diff(llegadas_dias), bins='auto')
+
+        #Estadisticos
+        todas_llegadas = []
+        todas_estadias = []
+        todas_salidas = []
+        todas_servicios_len = []
+
+        for i in arrival_list:
+            todas_llegadas.append(i.arrival_min)
+            todas_estadias.append(i.stay_time)
+            todas_salidas.append(i.leave_min)
+            if i.service == True:
+                todas_servicios_len.append(i.service_len)
+
+
+
+        fig, a = plt.subplots(2,2)
+        a[0][0].set_title("Llegadas")
+        a[0][0].set_xlabel("Minuto del día")
+        a[0][0].hist(todas_llegadas, bins=11)
+
+
+        a[0][1].set_title("Salidas")
+        a[0][1].set_xlabel("Minuto del día")
+        a[0][1].hist(todas_salidas, bins=11)
+
+
+        a[1][0].set_title("Tiempo de Estadía")
+        a[1][0].set_xlabel("Número de días")
+        a[1][0].hist(todas_estadias, bins='auto')
+
+
+        a[1][1].set_title("Duración Servicios")
+        a[1][1].set_xlabel("Minuto del día")
+        a[1][1].hist(todas_servicios_len, bins=[1,2,3,4,5])
+
+
+
+
+    '''
+    def find_probability(probability, dist):
+    
+        for n,p in dist:
+            if probability <= p:
+                return n
+    
+    for i in range(10):
+        random_number = np.random.rand()
+        n = find_probability(random_number, DIST_ACUMULADA_PROBABILIDAD_SALIDAS)
+        print("{} cae en el bin {}".format(random_number, n))
+    '''
+
+if __name__ == '__main__':
+    main(443, 'arrivals_1.ini')
+    main(650, 'arrivals_2.ini')
+    main(429, 'arrivals_3.ini')
+    main(797, 'arrivals_4.ini')
+    main(494, 'arrivals_5.ini')
+    main(454, 'arrivals_6.ini')
+    main(770, 'arrivals_7.ini')
+    main(413, 'arrivals_8.ini')
+    main(348, 'arrivals_9.ini')
+    main(506, 'arrivals_10.ini')
+    main(473, 'arrivals_11.ini')
+    main(241, 'arrivals_12.ini')
+    main(345, 'arrivals_13.ini')
+    main(483, 'arrivals_14.ini')
+    main(679, 'arrivals_15.ini')
+    main(927, 'arrivals_16.ini')
+    main(577, 'arrivals_17.ini')
+    main(211, 'arrivals_18.ini')
+    main(950, 'arrivals_19.ini')
+    main(665, 'arrivals_20.ini')
+    main(687, 'arrivals_21.ini')
+    main(678, 'arrivals_22.ini')
+    main(697, 'arrivals_23.ini')
+    main(518, 'arrivals_24.ini')
+    main(273, 'arrivals_25.ini')
+
+
