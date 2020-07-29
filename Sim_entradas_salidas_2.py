@@ -15,9 +15,7 @@ import tqdm
 import logging
 
 #logging.basicConfig(level=logging.INFO, format='%(message)s')
-logging.getLogger().setLevel(logging.INFO)
-logger = logging.getLogger('sim_log')
-logger.setLevel(logging.INFO)
+
 
 
 # Global Variables
@@ -55,24 +53,29 @@ RELOCATION_CRITERIA = "RI"
 
 CRANES_NUM = 1
 SERVICE_AREA_SIZE = 2
-ARRIVING_BOXES = 0
+#ARRIVING_BOXES = 0
 
-DATA_BOX_ARRIVALS = [("#BOX_NAME", "CALL_TIME", "CRANE_TIME", "EXECUTION_TIME")]
-DATA_BOX_REMOVALS = [("#BOX_NAME", "CALL_TIME", "CRANE_TIME", "EXECUTION_TIME", "RELOCATIONS")]
-DATA_BOX_RELOCATIONS = [("#BOX_NAME", "CALL_TIME", "EXECUTION_TIME", "CALLER_BOX", "MOVCOST")]
-DATA_BOX_SERVICE = [("#BOX_NAME", "START_TIME", "EXECUTION_TIME", "END_TIME")]
-DATA_NUMBER_OF_BOXES = [("#TIMESTEP","BOXES_IN_YARD")]
-COUNT_NUMBER_OF_BOXES = 0
 
-DATA_SNAPSHOTS = []
-DATA_NUMBER_OF_BOXES_DAY = []
 
 ###############################       SIMULACION         ###############################
 class TLSSIM():
     def __init__(self, name=INSTANCE_NAME, arrivals=INITIAL_BOX_FILE, criteria=RELOCATION_CRITERIA,
                  outputdir=OUTPUT_FILES_FOLDER):
+        #SET REPORTING VARIABLES
+        self.DATA_BOX_ARRIVALS = [("#BOX_NAME", "CALL_TIME", "CRANE_TIME", "EXECUTION_TIME")]
+        self.DATA_BOX_REMOVALS = [("#BOX_NAME", "CALL_TIME", "CRANE_TIME", "EXECUTION_TIME", "RELOCATIONS")]
+        self.DATA_BOX_RELOCATIONS = [("#BOX_NAME", "CALL_TIME", "EXECUTION_TIME", "CALLER_BOX", "MOVCOST")]
+        self.DATA_BOX_SERVICE = [("#BOX_NAME", "START_TIME", "EXECUTION_TIME", "END_TIME")]
+        self.DATA_NUMBER_OF_BOXES = [("#TIMESTEP", "BOXES_IN_YARD")]
+        self.COUNT_NUMBER_OF_BOXES = 0
+
+        self.DATA_SNAPSHOTS = []
+        self.DATA_NUMBER_OF_BOXES_DAY = []
+
+        self.DATA_DECISION = [("#TIMESTAMP", "BOX_NAME, BOX_ORIGIN, DECISIONS")]
         self.run_status = "waiting"
         self.rep_name = name
+
 
         global INSTANCE_NAME
         INSTANCE_NAME = name
@@ -85,9 +88,12 @@ class TLSSIM():
         if not os.path.exists(OUTPUT_FILES_FOLDER):
             os.makedirs(OUTPUT_FILES_FOLDER)
 
+        logging.getLogger().setLevel(logging.DEBUG)
+        self.logger = logging.getLogger('sim_log')
+        self.logger.setLevel(logging.INFO)
         file_handler = logging.FileHandler(OUTPUT_FILES_FOLDER + INSTANCE_NAME + '.log', 'a')
-        file_handler.setLevel(logging.INFO)
-        logger.addHandler(file_handler)
+        file_handler.setLevel(logging.ERROR)
+        self.logger.addHandler(file_handler)
 
 
 
@@ -122,8 +128,8 @@ class TLSSIM():
             if quiet:
                 console_handler.setLevel(logging.CRITICAL)
             else:
-                console_handler.setLevel(logging.DEBUG)
-            logger.addHandler(console_handler)
+                console_handler.setLevel(logging.INFO)
+            self.logger.addHandler(console_handler)
 
             # Elementos de la simulacion
 
@@ -150,11 +156,11 @@ class TLSSIM():
             # AGREGAMOS LA TABLA DE DISTANCIAS
             self.INI_setBayDistance(patio, CLOSE_BAYS_FILE, MEDIUM_BAYS_FILE)
 
-            logger.debug(patio.YRD_getBayDistance(patio.YRD_getBayByName("LUA1"), patio.YRD_getBayByName("LUB1")))
-            logger.debug(patio.YRD_getBayDistance(patio.YRD_getBayByName("LUA12"), patio.YRD_getBayByName("LDX1")))
-            logger.debug(patio.YRD_getBayDistance(patio.YRD_getBayByName("RUB3"), patio.YRD_getBayByName("LUY4")))
-            logger.debug(patio.YRD_getBayDistance(patio.YRD_getBayByName("RUB3"), patio.YRD_getBayByName("LUX5")))
-            logger.debug(patio.YRD_getBayDistance(patio.YRD_getBayByName("LDY10"), patio.YRD_getBayByName("LUB1")))
+            self.logger.debug(patio.YRD_getBayDistance(patio.YRD_getBayByName("LUA1"), patio.YRD_getBayByName("LUB1")))
+            self.logger.debug(patio.YRD_getBayDistance(patio.YRD_getBayByName("LUA12"), patio.YRD_getBayByName("LDX1")))
+            self.logger.debug(patio.YRD_getBayDistance(patio.YRD_getBayByName("RUB3"), patio.YRD_getBayByName("LUY4")))
+            self.logger.debug(patio.YRD_getBayDistance(patio.YRD_getBayByName("RUB3"), patio.YRD_getBayByName("LUX5")))
+            self.logger.debug(patio.YRD_getBayDistance(patio.YRD_getBayByName("LDY10"), patio.YRD_getBayByName("LUB1")))
 
             # Inicializcion de contenedores ya en patio.
 
@@ -176,7 +182,7 @@ class TLSSIM():
 
             # PROCES DE SALIDA DE CONTENEDORES
             master_box_list = Box_arrival_list + Box_existing_list
-            logger.info("Agendado Salidas de contenedores existentes")
+            self.logger.info("Agendado Salidas de contenedores existentes")
             for existing_box in master_box_list:
                 if existing_box.date_out > 0:
                     sim_enviroment.process(self.GEN_removal(sim_enviroment, patio, sim_res_CRANES, existing_box))
@@ -196,42 +202,57 @@ class TLSSIM():
             sim_enviroment.process(self.GEN_EndOfDayReports(sim_enviroment, patio, 1440))
 
             #----------------------------- EJECUCION ---------------------------------------#
-            logger.warning("INICIO SIMULACION")
-            logger.info("Iniciando simulacion")
+            self.logger.warning("INICIO SIMULACION")
+            self.logger.info("Iniciando simulacion")
             sim_enviroment.run(until=FINAL_SIM_CLOCK)
 
-            logger.info("------------------------- Fin Simulacion-----------------------")
-            logger.info("=========== FINAL YARD LAYOUT =============")
+            self.logger.info("------------------------- Fin Simulacion-----------------------")
+            self.logger.info("=========== FINAL YARD LAYOUT =============")
             patio.YRD_printYard(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE)
-            self.export_snapshot(DATA_SNAPSHOTS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_snapshots.txt")
-            logger.info("============= REMOVED BOXES ===============")
-            logger.info(str(patio.removed_box_list))
+            self.export_snapshot(self.DATA_SNAPSHOTS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_snapshots.txt")
+            self.logger.info("============= REMOVED BOXES ===============")
+            self.logger.info(str(patio.removed_box_list))
 
-            logger.info("============= CRANE RESOURCE ==============")
-            logger.info(str(sim_res_CRANES.data))
-            logger.info("=========== REGISTIO EVENTOS: ARRIVALS ==============")
-            logger.info(str(DATA_BOX_ARRIVALS))
-            self.export_data(DATA_BOX_ARRIVALS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_arrivals.txt")
-            logger.info("=========== REGISTIO EVENTOS: REMOVALS ==============")
-            logger.info(str(DATA_BOX_REMOVALS))
-            self.export_data(DATA_BOX_REMOVALS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_removals.txt")
-            logger.info("=========== REGISTIO EVENTOS: RELOCATIONS ==============")
-            logger.info(str(DATA_BOX_RELOCATIONS))
-            self.export_data(DATA_BOX_RELOCATIONS, OUTPUT_FILES_FOLDER +'\\' + INSTANCE_NAME + "_relocations.txt")
-            logger.info("=========== REGISTIO EVENTOS: RELOCATIONS ==============")
-            logger.info(str(DATA_BOX_SERVICE))
+            self.logger.info("============= CRANE RESOURCE ==============")
+            self.logger.info(str(sim_res_CRANES.data))
+            self.logger.info("=========== REGISTIO EVENTOS: ARRIVALS ==============")
+            self.logger.info(str(self.DATA_BOX_ARRIVALS))
+            self.export_data(self.DATA_BOX_ARRIVALS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_arrivals.txt")
+            self.logger.info("=========== REGISTIO EVENTOS: REMOVALS ==============")
+            self.logger.info(str(self.DATA_BOX_REMOVALS))
+            self.export_data(self.DATA_BOX_REMOVALS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_removals.txt")
+            self.logger.info("=========== REGISTIO EVENTOS: RELOCATIONS ==============")
+            self.logger.info(str(self.DATA_BOX_RELOCATIONS))
+            self.export_data(self.DATA_BOX_RELOCATIONS, OUTPUT_FILES_FOLDER +'\\' + INSTANCE_NAME + "_relocations.txt")
+            self.logger.info("=========== REGISTIO EVENTOS: SERVICES ==============")
+            self.logger.info(str(self.DATA_BOX_SERVICE))
 
+            self.export_data(self.DATA_DECISION, OUTPUT_FILES_FOLDER +'\\' + INSTANCE_NAME + "_decisions.txt")
+            #self.export_data(self.DATA_DECISION, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_decisions2.txt")
 
-            self.export_data(DATA_BOX_SERVICE, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_services.txt")
-            #export_data(DATA_NUMBER_OF_BOXES, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_box_counter.txt")
-            self.export_snapshot(DATA_NUMBER_OF_BOXES_DAY, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_box_counter_day.txt" )
+            self.export_data(self.DATA_BOX_SERVICE, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_services.txt")
+            #export_data(self.DATA_NUMBER_OF_BOXES, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_box_counter.txt")
+            self.export_snapshot(self.DATA_NUMBER_OF_BOXES_DAY, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_box_counter_day.txt" )
             self.run_status = "COMPLETE"
 
-            return 1
+            handlers = self.logger.handlers[:]
+            for handler in handlers:
+                handler.close()
+                self.logger.removeHandler(handler)
 
         except Exception as ex:
-            logger.error(ex)
+            self.logger.exception(ex)
             self.run_status = "Unable to complete"
+
+            #Imprimo el estado del patio en un archivo
+            error_File = open(OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_failed_snapshot.txt", "w+")
+            error_File.write(patio.YRD_exportYardSnapShot(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE))
+
+            handlers = self.logger.handlers[:]
+            for handler in handlers:
+                handler.close()
+                self.logger.removeHandler(handler)
+
             return 0
 
     ###############################     RUTINAS DE INICIALIZACION   ###############################
@@ -296,9 +317,9 @@ class TLSSIM():
                 return_box_arrival_list.append(yard_class.Box(name, date_in=arrival_date, date_out=leaving_date))
 
         if print_to_console:
-            logger.info("Lista de llegadas Programadas")
+            self.logger.info("Lista de llegadas Programadas")
             for box in return_box_arrival_list:
-                logger.info("BOX NAME : {} arrives at {} leaves at {}".format(box.BOX_getName(), box.BOX_getDateIn(),
+                self.logger.info("BOX NAME : {} arrives at {} leaves at {}".format(box.BOX_getName(), box.BOX_getDateIn(),
                                                                         box.BOX_getDateOut()))
         return return_box_arrival_list
 
@@ -317,9 +338,9 @@ class TLSSIM():
                                                               due_time=due_time,
                                                               service_lenght=length))
         if print_to_console:
-            logger.info("Lista de servicios Programados")
+            self.logger.info("Lista de servicios Programados")
             for serv in return_service_list:
-                logger.info("BOX LIST : {} enter service at {} for {}".format(serv.container_list, serv.start_time, serv.service_lenght))
+                self.logger.info("BOX LIST : {} enter service at {} for {}".format(serv.container_list, serv.start_time, serv.service_lenght))
         return return_service_list
 
 
@@ -334,28 +355,30 @@ class TLSSIM():
         :param sim_res_Crane: the simulation resouerce for cranes
         :param arriving_box: the container that its arriving
         '''
-        logger.info("[" + str(env.now) + "] Se espera que " + str(arriving_box.BOX_getName()) + " llegue a las " + str(
+        self.logger.info("[" + str(env.now) + "] Se espera que " + str(arriving_box.BOX_getName()) + " llegue a las " + str(
             arriving_box.BOX_getDateIn()))
         yield env.timeout(arriving_box.BOX_getDateIn() - env.now)
         data_call_time = env.now
         # Cuando llega, se le busca lugar y luego se mueve
-        logger.info("[" + str(env.now) + "] Llego " + str(arriving_box.BOX_getName()) + " y esta esperando grúa")
+        self.logger.info("[" + str(env.now) + "] Llego " + str(arriving_box.BOX_getName()) + " y esta esperando grúa")
+        arriving_box.bay = "Inbound"
         with sim_res_Crane.request() as i_have_a_crane:
             yield i_have_a_crane
             data_crane_time = env.now
-            destiny_block, destiny_bay = yard.YRD_BoxAllocation(arriving_box)
+            destiny_block, destiny_bay, decision_string = yard.YRD_BoxAllocation(arriving_box)
+            self.DATA_DECISION.append((env.now, decision_string))
             move_succ, move_cost = yard.YRD_moveInboundContainer(arriving_box, destiny_bay)
             if move_succ:
-                logger.info("[" + str(env.now) + "] Grua moviendo a " + str(arriving_box.BOX_getName()) + " a " + str(
+                self.logger.info("[" + str(env.now) + "] Grua moviendo a " + str(arriving_box.BOX_getName()) + " a " + str(
                     destiny_bay) + " por " + str(move_cost) + " min")
                 yield env.timeout(move_cost)
                 data_execution_time = env.now
-                logger.info("[" + str(env.now) + "] Grua finaliza movimiento de " + str(arriving_box.BOX_getName()))
+                self.logger.info("[" + str(env.now) + "] Grua finaliza movimiento de " + str(arriving_box.BOX_getName()))
                 #yard.YRD_printYard(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE)
-                DATA_BOX_ARRIVALS.append((arriving_box.BOX_getName(), data_call_time, data_crane_time, data_execution_time))
-                global COUNT_NUMBER_OF_BOXES
-                COUNT_NUMBER_OF_BOXES = COUNT_NUMBER_OF_BOXES + 1
-                DATA_NUMBER_OF_BOXES.append((data_execution_time, COUNT_NUMBER_OF_BOXES))
+                self.DATA_BOX_ARRIVALS.append((arriving_box.BOX_getName(), data_call_time, data_crane_time, data_execution_time))
+                #global self.COUNT_NUMBER_OF_BOXES
+                self.COUNT_NUMBER_OF_BOXES = self.COUNT_NUMBER_OF_BOXES + 1
+                self.DATA_NUMBER_OF_BOXES.append((data_execution_time, self.COUNT_NUMBER_OF_BOXES))
 
     def GEN_removal(self, env, yard, sim_res_Crane, leaving_box):
         '''
@@ -368,7 +391,7 @@ class TLSSIM():
         :param sim_res_Crane: the simulation resouerce for cranes
         :param leaving_box: the container that its leaving the yard
         '''
-        logger.info("[" + str(env.now) + "] " + str(leaving_box.BOX_getName()) + " se debe retirar a las " + str(
+        self.logger.info("[" + str(env.now) + "] " + str(leaving_box.BOX_getName()) + " se debe retirar a las " + str(
             leaving_box.BOX_getDateOut()))
         yield env.timeout(leaving_box.BOX_getDateOut() - env.now)
 
@@ -380,26 +403,26 @@ class TLSSIM():
         if yard.YRD_isBoxInService(leaving_box):
             remove_succ = True
             remove_cost = 0
-            logger.info("[{}] Time to remove {}, but will be removed once service in complete".format(env.now, leaving_box))
+            self.logger.info("[{}] Time to remove {}, but will be removed once service in complete".format(env.now, leaving_box))
             data_removal_crane_time = 0
             data_removal_execute = 0
             data_removal_relocatins = 0
-            DATA_BOX_REMOVALS.append((leaving_box.BOX_getName(), data_removal_call_time, data_removal_crane_time,
+            self.DATA_BOX_REMOVALS.append((leaving_box.BOX_getName(), data_removal_call_time, data_removal_crane_time,
                                       data_removal_execute, data_removal_relocatins))
 
         else:
-            logger.info("[{}] Hora de retirar {}, esperando grua".format(env.now, leaving_box))
+            self.logger.info("[{}] Hora de retirar {}, esperando grua".format(env.now, leaving_box))
             #Espero a que llegue una grúa
             with sim_res_Crane.request() as i_have_a_crane:
                 yield i_have_a_crane
                 data_removal_crane_time = env.now
-                logger.info("[{}] Grua llega para retirar {}".format(env.now, leaving_box))
+                self.logger.info("[{}] Grua llega para retirar {}".format(env.now, leaving_box))
 
                 #Cuando se debe retirar, se revisa si esta bloqueado
                 blockers_list = yard.YRD_isBoxBlocked(leaving_box)
                 data_removal_relocatins = len(blockers_list)
                 if not(blockers_list == []):
-                    logger.info("[{}] RELOC: debemos relocar a {}".format(env.now, blockers_list))
+                    self.logger.info("[{}] RELOC: debemos relocar a {}".format(env.now, blockers_list))
                     #yard.YRD_printYard(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE)
                     involved_boxes = blockers_list.copy()
                     involved_boxes.append(leaving_box)
@@ -410,7 +433,7 @@ class TLSSIM():
                             if not yard.YRD_isBoxBlocked(blocker):
                                 blockers_list.remove(blocker)
                                 involved_boxes.remove(blocker)
-                                destiny_bay = yard.YRD_findRelocationPosition(blocker, involved_boxes)
+                                destiny_bay, decision_string = yard.YRD_findRelocationPosition(blocker, involved_boxes)
                                 # Si esta bloqueado, Falla!!
                                 if yard.YRD_isBoxBlocked(blocker):
                                     raise Exception("Relocating a blocked BOX {} from {}, original list was {} now is {}, Check code!!".format(blocker, blocker.bay,blockers_list, yard.YRD_isBoxBlocked(blocker)))
@@ -419,21 +442,22 @@ class TLSSIM():
                                 if reloc_succ:
                                     data_reloc_call =env.now
                                     yield env.timeout(reloc_cost)
-                                    logger.info("[{}] RELOC: se recoloco {} a {}, costo {}".format(env.now, blocker, destiny_bay, reloc_cost))
+                                    self.logger.info("[{}] RELOC: se recoloco {} a {}, costo {}".format(env.now, blocker, destiny_bay, reloc_cost))
                                     data_reloc_execute =env.now
-                                    DATA_BOX_RELOCATIONS.append((blocker.BOX_getName(), data_reloc_call, data_reloc_execute, leaving_box.BOX_getName(), reloc_cost))
+                                    self.DATA_BOX_RELOCATIONS.append((blocker.BOX_getName(), data_reloc_call, data_reloc_execute, leaving_box.BOX_getName(), reloc_cost))
+                                    self.DATA_DECISION.append((env.now, decision_string))
                                 else:
                                     raise Exception("[{}]Relocation of {} failed".format(env.now, blocker))
                 #Cuando este accesible retiro el contenedor
                 remove_succ, remove_cost = yard.YRD_removeBox(leaving_box, env.now)
             if remove_succ:
                 yield env.timeout(remove_cost)
-                logger.info("[{}] Retirando {} con la grua, costo {}".format(env.now, leaving_box, remove_cost))
+                self.logger.info("[{}] Retirando {} con la grua, costo {}".format(env.now, leaving_box, remove_cost))
                 data_removal_execute = env.now
-                DATA_BOX_REMOVALS.append((leaving_box.BOX_getName(), data_removal_call_time, data_removal_crane_time, data_removal_execute, data_removal_relocatins))
-                global COUNT_NUMBER_OF_BOXES
-                COUNT_NUMBER_OF_BOXES = COUNT_NUMBER_OF_BOXES - 1
-                DATA_NUMBER_OF_BOXES.append((data_removal_execute, COUNT_NUMBER_OF_BOXES))
+                self.DATA_BOX_REMOVALS.append((leaving_box.BOX_getName(), data_removal_call_time, data_removal_crane_time, data_removal_execute, data_removal_relocatins))
+                #global self.COUNT_NUMBER_OF_BOXES
+                self.COUNT_NUMBER_OF_BOXES = self.COUNT_NUMBER_OF_BOXES - 1
+                self.DATA_NUMBER_OF_BOXES.append((data_removal_execute, self.COUNT_NUMBER_OF_BOXES))
             else:
                 yard.YRD_printYard(4,12)
                 raise Exception("Box {} failed to be removed, blocked by {}".format(leaving_box, remove_cost))
@@ -447,24 +471,24 @@ class TLSSIM():
         :param sim_res_Crane:
         :param box:
         '''
-        logger.info("[{}] Inicia movimiento de {} a servicio".format(env.now, box))
+        self.logger.info("[{}] Inicia movimiento de {} a servicio".format(env.now, box))
 
         with sim_res_Crane.request() as i_have_a_crane:
             yield i_have_a_crane
-            logger.info("[{}] Grua llega para llevar {} a servicio".format(env.now, box))
+            self.logger.info("[{}] Grua llega para llevar {} a servicio".format(env.now, box))
 
             ### INICIO RELOCACIONES:  Cuando se debe retirar, se revisa si esta bloqueado #########################
             blockers_list = yard.YRD_isBoxBlocked(box)
 
 
             if not (blockers_list == []):
-                logger.info("[{}] RELOC: debemos relocar a {} por servicio".format(env.now, blockers_list))
+                self.logger.info("[{}] RELOC: debemos relocar a {} por servicio".format(env.now, blockers_list))
                 # Llamamos a la relocacion de todos los blockers
                 involved_boxes = blockers_list.copy()
                 involved_boxes.append(box)
                 for blocker in blockers_list:
                     involved_boxes.remove(blocker)
-                    destiny_bay = yard.YRD_findRelocationPosition(blocker, involved_boxes)
+                    destiny_bay, decision_string = yard.YRD_findRelocationPosition(blocker, involved_boxes)
                     # Si esta bloqueado, Falla!!
                     if yard.YRD_isBoxBlocked(blocker):
                         raise Exception("Relocating a blocked BOX {}, Check code!!".format(blocker))
@@ -473,33 +497,35 @@ class TLSSIM():
                     if reloc_succ:
                         data_reloc_call = env.now
                         yield env.timeout(reloc_cost)
-                        logger.info("[{}] RELOC: se recoloco {} a {}, costo {}".format(
+                        self.logger.info("[{}] RELOC: se recoloco {} a {}, costo {}".format(
                                                                                 env.now,
                                                                                 blocker,
                                                                                 destiny_bay,
                                                                                 reloc_cost))
                         data_reloc_execute = env.now
-                        DATA_BOX_RELOCATIONS.append(
+                        self.DATA_BOX_RELOCATIONS.append(
                             (blocker.BOX_getName(), data_reloc_call, data_reloc_execute, box.BOX_getName(), reloc_cost))
+                        self.DATA_DECISION.append((env.now, decision_string))
                         #### FIN RELOCACIOES ####################################################
 
             # Cuando este accesible nuevo el contenedor al area de servicio
             move_succ, move_cost = yard.YRD_moveBoxToService(box)
             if move_succ:
                 yield env.timeout(move_cost)
-                logger.info("[{}] Moving {} to service, cost {}".format(env.now, box, move_cost))
+                self.logger.info("[{}] Moving {} to service, cost {}".format(env.now, box, move_cost))
 
     def GEN_moveFromService(self, env, yard, sim_res_Crane, box):
-        logger.info("[{}] Box {} is leaving service area".format(env.now, box))
+        self.logger.info("[{}] Box {} is leaving service area".format(env.now, box))
         with sim_res_Crane.request() as i_have_a_crane:
             yield i_have_a_crane
-            destiny_block, destiny_bay = yard.YRD_BoxAllocation(box)
+            destiny_block, destiny_bay, decision_string = yard.YRD_BoxAllocation(box)
+            self.DATA_DECISION.append((env.now, decision_string))
             move_succ, move_cost = yard.YRD_moveInboundContainer(box, destiny_bay)
             if move_succ:
-                logger.info("[" + str(env.now) + "] Crane moving " + str(box.BOX_getName()) + " to " + str(
+                self.logger.info("[" + str(env.now) + "] Crane moving " + str(box.BOX_getName()) + " to " + str(
                     destiny_bay) + " at cost " + str(move_cost) + " from service area")
                 yield env.timeout(move_cost)
-                logger.info("[" + str(env.now) + "] Crane completed movement of " + str(box.BOX_getName()))
+                self.logger.info("[" + str(env.now) + "] Crane completed movement of " + str(box.BOX_getName()))
 
 
     def GEN_services (self, env, yard, sim_res_Crane, sim_res_Service_slot, service):
@@ -512,7 +538,7 @@ class TLSSIM():
         :param yard: the container yard
         :param service: the service to be done
         '''
-        logger.info("[{}] SERV: Calendarizado servicio de {} a las {}".format(
+        self.logger.info("[{}] SERV: Calendarizado servicio de {} a las {}".format(
                                                                         env.now,
                                                                         service.container_list,
                                                                         service.start_time))
@@ -536,11 +562,11 @@ class TLSSIM():
                 env.process(self.GEN_moveToService(env, yard, sim_res_Crane, box))
                 for box in service_boxes]
         yield simpy.events.AllOf(env, moves)
-        logger.info("[{}] SERV: servicio de {} in position ".format(env.now,service.container_list))
+        self.logger.info("[{}] SERV: servicio de {} in position ".format(env.now,service.container_list))
         #Wait until the servive due time
         yield env.timeout(max(0, service.due_time-env.now))
         data_execution_time = env.now
-        logger.info("[{}] SER: service of {} starting now".format(env.now, service.container_list))
+        self.logger.info("[{}] SER: service of {} starting now".format(env.now, service.container_list))
         yield env.timeout(service.service_lenght)
         data_end_time = env.now
         #After service return containers to yard or remove them if removal time has passed.
@@ -549,43 +575,43 @@ class TLSSIM():
                 remove_succ, remove_cost = yard.YRD_removeBoxFromService(box, env.now)
                 box.in_service = False
                 if remove_succ:
-                    logger.info("[{}] Removing {} from service area, costs {}".format(env.now, box, remove_cost))
+                    self.logger.info("[{}] Removing {} from service area, costs {}".format(env.now, box, remove_cost))
                     sim_res_Service_slot.release(available_slots.pop(0)) #Release the service slot
-                    DATA_BOX_REMOVALS.append((str(box.BOX_getName()), str(box.BOX_getDateOut()), str(env.now),
+                    self.DATA_BOX_REMOVALS.append((str(box.BOX_getName()), str(box.BOX_getDateOut()), str(env.now),
                                               str(env.now), str(0)))
-                    global COUNT_NUMBER_OF_BOXES
-                    COUNT_NUMBER_OF_BOXES = COUNT_NUMBER_OF_BOXES - 1
-                    DATA_NUMBER_OF_BOXES.append((str(env.now), COUNT_NUMBER_OF_BOXES))
+                    #global self.COUNT_NUMBER_OF_BOXES
+                    self.COUNT_NUMBER_OF_BOXES = self.COUNT_NUMBER_OF_BOXES - 1
+                    self.DATA_NUMBER_OF_BOXES.append((str(env.now), self.COUNT_NUMBER_OF_BOXES))
             else:
                 #Call for a move
                 yield env.process(self.GEN_moveFromService(env, yard, sim_res_Crane, box))
                 #once move is complete release service slot and flag that box is no longer in service
                 box.in_service = False
                 sim_res_Service_slot.release(available_slots.pop(0))
-        logger.info("[{}] Service of {} is complete".format(env.now, service_boxes))
-        DATA_BOX_SERVICE.append((str(service_boxes), str(service.start_time), str(data_execution_time),str(data_end_time)))
+        self.logger.info("[{}] Service of {} is complete".format(env.now, service_boxes))
+        self.DATA_BOX_SERVICE.append((str(service_boxes), str(service.start_time), str(data_execution_time),str(data_end_time)))
 
     def GEN_snapshots(self, env, yard, snap_interval):
         '''
         A intervalos regulares actualiza los reportes
         '''
-        global DATA_SNAPSHOTS
+        #global self.DATA_SNAPSHOTS
         #Esperamos al inicio del periodo de test
         yield env.timeout(START_RECOUNT_TIME)
-        DATA_SNAPSHOTS.append('Yard @'+str(env.now)+'\n'+yard.YRD_exportYardSnapShot(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE))
+        self.DATA_SNAPSHOTS.append('Yard @'+str(env.now)+'\n'+yard.YRD_exportYardSnapShot(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE))
         while env.now < END_RECOUND_TIME:
             yield env.timeout(snap_interval)
             snap = yard.YRD_exportYardSnapShot(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE)
-            DATA_SNAPSHOTS.append('Yard @'+str(env.now)+'\n'+ snap)
+            self.DATA_SNAPSHOTS.append('Yard @'+str(env.now)+'\n'+ snap)
 
     def GEN_EndOfDayReports(self, env, yard, report_interval):
 
-        global DATA_NUMBER_OF_BOXES_DAY
+        #global self.DATA_NUMBER_OF_BOXES_DAY
         #yield env.timeout(START_RECOUNT_TIME)
-        DATA_NUMBER_OF_BOXES_DAY.append(str(env.now) + ',' + str(COUNT_NUMBER_OF_BOXES))
+        self.DATA_NUMBER_OF_BOXES_DAY.append(str(env.now) + ',' + str(self.COUNT_NUMBER_OF_BOXES))
         while env.now < END_RECOUND_TIME:
             yield env.timeout(report_interval)
-            DATA_NUMBER_OF_BOXES_DAY.append(str(env.now) + ',' + str(COUNT_NUMBER_OF_BOXES))
+            self.DATA_NUMBER_OF_BOXES_DAY.append(str(env.now) + ',' + str(self.COUNT_NUMBER_OF_BOXES))
 
             #Update the global progress of the simulation
 
@@ -629,11 +655,11 @@ if __name__ == '__main__':
 
     #sim = TLSSIM()
     sim = TLSSIM(name="LACAGA",
-                 outputdir="INSTANCES\INSTANCES_18D_F18\Salidas\\MM\\",
-                 criteria="MM",
-                 arrivals="INSTANCES\INSTANCES_180D_F18\\arrivals_1.ini")
+                 outputdir="INSTANCES\DEBUG\Salidas\\MM\\",
+                 criteria="ALL",
+                 arrivals="INSTANCES\INSTANCES_180D_F2\\arrivals_1.ini")
     start_time = time.time()
-    sim.runSimulation(quiet=True)
+    sim.runSimulation(quiet=False)
     end_time = time.time()
     delta = end_time - start_time
     print("Demoró {} secs".format(delta))

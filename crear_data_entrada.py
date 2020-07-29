@@ -2,11 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-OUTPUT_FOLDER = "INSTANCES\INSTANCES_180D_F3"
+OUTPUT_FOLDER = "INSTANCES\INSTANCES_180D_F18_100"
 random_state = None
 T_INICIAL = 8 * 60
 T_FINAL = 18 * 60
-FACTOR_DE_ESCALA = 1.75
+FACTOR_DE_ESCALA = 1.8
 DIAS = 180
 SERVICE_CHANCE = 0.15
 RANGO_SERVICIO_EN_HORA = [1, 4]
@@ -178,7 +178,8 @@ def main(seed, output_file_name, grap=False):
         a[0][1].hist(todas_salidas, bins=11)
 
 
-        a[1][0].set_title("Tiempo de Estadía")
+        ave_estadia = np.average(todas_estadias)
+        a[1][0].set_title("Tiempo de Estadía {}".format(ave_estadia))
         a[1][0].set_xlabel("Número de días")
         a[1][0].hist(todas_estadias, bins='auto')
 
@@ -204,6 +205,7 @@ def main(seed, output_file_name, grap=False):
     '''
 
 if __name__ == '__main__':
+    '''
     main(443, 'arrivals_1.ini')
     main(650, 'arrivals_2.ini')
     main(429, 'arrivals_3.ini')
@@ -229,5 +231,110 @@ if __name__ == '__main__':
     main(697, 'arrivals_23.ini')
     main(518, 'arrivals_24.ini')
     main(273, 'arrivals_25.ini')
+    '''
+
+    main(788, 'arrivals_1.ini', grap=True)
+    main(747, 'arrivals_2.ini')
+    main(580, 'arrivals_3.ini')
+    main(640, 'arrivals_4.ini')
+    main(430, 'arrivals_5.ini')
+    main(207, 'arrivals_6.ini')
+    main(546, 'arrivals_7.ini')
+    main(618, 'arrivals_8.ini')
+    main(588, 'arrivals_9.ini')
+    main(165, 'arrivals_10.ini')
+    main(644, 'arrivals_11.ini')
+    main(897, 'arrivals_12.ini')
+    main(194, 'arrivals_13.ini')
+    main(540, 'arrivals_14.ini')
+    main(638, 'arrivals_15.ini')
+    main(261, 'arrivals_16.ini')
+    main(751, 'arrivals_17.ini')
+    main(301, 'arrivals_18.ini')
+    main(448, 'arrivals_19.ini')
+    main(528, 'arrivals_20.ini')
+    main(470, 'arrivals_21.ini')
+    main(385, 'arrivals_22.ini')
+    main(823, 'arrivals_23.ini')
+    main(983, 'arrivals_24.ini')
+    main(919, 'arrivals_25.ini')
+    main(341, 'arrivals_26.ini')
+    main(421, 'arrivals_27.ini')
+    main(297, 'arrivals_28.ini')
+    main(590, 'arrivals_29.ini')
+    main(480, 'arrivals_30.ini')
+    main(326, 'arrivals_31.ini')
+    main(710, 'arrivals_32.ini')
+    main(665, 'arrivals_33.ini')
+    main(425, 'arrivals_34.ini')
+    main(973, 'arrivals_35.ini')
+    main(507, 'arrivals_36.ini')
+    main(758, 'arrivals_37.ini')
+    main(792, 'arrivals_38.ini')
+    main(333, 'arrivals_39.ini')
+    main(147, 'arrivals_40.ini')
+    main(211, 'arrivals_41.ini')
+    main(551, 'arrivals_42.ini')
+    main(320, 'arrivals_43.ini')
+    main(885, 'arrivals_44.ini')
+    main(579, 'arrivals_45.ini')
+    main(713, 'arrivals_46.ini')
+    main(649, 'arrivals_47.ini')
+    main(988, 'arrivals_48.ini')
+    main(778, 'arrivals_49.ini')
+    main(747, 'arrivals_50.ini')
+    main(752, 'arrivals_51.ini')
+    main(676, 'arrivals_52.ini')
+    main(268, 'arrivals_53.ini')
+    main(619, 'arrivals_54.ini')
+    main(100, 'arrivals_55.ini')
+    main(869, 'arrivals_56.ini')
+    main(514, 'arrivals_57.ini')
+    main(180, 'arrivals_58.ini')
+    main(376, 'arrivals_59.ini')
+    main(676, 'arrivals_60.ini')
+    main(258, 'arrivals_61.ini')
+    main(336, 'arrivals_62.ini')
+    main(932, 'arrivals_63.ini')
+    main(788, 'arrivals_64.ini')
+    main(585, 'arrivals_65.ini')
+    main(292, 'arrivals_66.ini')
+    main(837, 'arrivals_67.ini')
+    main(450, 'arrivals_68.ini')
+    main(889, 'arrivals_69.ini')
+    main(216, 'arrivals_70.ini')
+    main(428, 'arrivals_71.ini')
+    main(261, 'arrivals_72.ini')
+    main(652, 'arrivals_73.ini')
+    main(588, 'arrivals_74.ini')
+    main(940, 'arrivals_75.ini')
+    main(137, 'arrivals_76.ini')
+    main(449, 'arrivals_77.ini')
+    main(118, 'arrivals_78.ini')
+    main(797, 'arrivals_79.ini')
+    main(841, 'arrivals_80.ini')
+    main(637, 'arrivals_81.ini')
+    main(635, 'arrivals_82.ini')
+    main(535, 'arrivals_83.ini')
+    main(647, 'arrivals_84.ini')
+    main(821, 'arrivals_85.ini')
+    main(294, 'arrivals_86.ini')
+    main(783, 'arrivals_87.ini')
+    main(657, 'arrivals_88.ini')
+    main(987, 'arrivals_89.ini')
+    main(974, 'arrivals_90.ini')
+    main(737, 'arrivals_91.ini')
+    main(612, 'arrivals_92.ini')
+    main(329, 'arrivals_93.ini')
+    main(767, 'arrivals_94.ini')
+    main(223, 'arrivals_95.ini')
+    main(434, 'arrivals_96.ini')
+    main(559, 'arrivals_97.ini')
+    main(713, 'arrivals_98.ini')
+    main(430, 'arrivals_99.ini')
+    main(126, 'arrivals_100.ini')
+
+
+    #main(555, 'test_sample.txt', grap=True)
 
 

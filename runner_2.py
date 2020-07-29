@@ -7,23 +7,32 @@ import Sim_entradas_salidas_2 as sim
 import time
 import sys
 
-INS_NAME = "180D_MM_"
-INS_DIR = "INSTANCES\INSTANCES_180D_F18\\"
-CRITERIA = "MM"
-OUT_DIR = "INSTANCES\INSTANCES_180D_F18\Salidas\\MM\\"
+#INS_NAME = "180D_MM_"
+#INS_DIR = "INSTANCES\INSTANCES_180D_F18\\"
+#CRITERIA = "MM"
+#OUT_DIR = "INSTANCES\INSTANCES_180D_F18\Salidas\\MM\\"
 
 A = [
-    ["180D_F2_MM_", "INSTANCES\INSTANCES_180D_F2\Salidas\\MM\\", "MM", "INSTANCES\INSTANCES_180D_F2\\"],
-    ["180D_F3_MM_", "INSTANCES\INSTANCES_180D_F3\Salidas\\MM\\", "MM", "INSTANCES\INSTANCES_180D_F3\\"],
-    ["180D_F18_MM_", "INSTANCES\INSTANCES_180D_F18\Salidas\\MM\\", "MM", "INSTANCES\INSTANCES_180D_F18\\"],
-    ["180D_F25_MM", "INSTANCES\INSTANCES_180D_F25\Salidas\\MM\\", "MM", "INSTANCES\INSTANCES_180D_F25\\"],
-    ["180D_F175_MM_", "INSTANCES\INSTANCES_180D_F175\Salidas\\MM\\", "MM", "INSTANCES\INSTANCES_180D_F175\\"],
+    ["180D_F18_100_MM_", "INSTANCES\Resultados\F18_100\Versus\MM\\", "MM", "INSTANCES\INSTANCES_180D_F18_100\\"],
+    ["180D_F18_100_RI_", "INSTANCES\Resultados\F18_100\Versus\RI\\", "RI", "INSTANCES\INSTANCES_180D_F18_100\\"],
+    ["180D_F18_100_RIL_", "INSTANCES\Resultados\F18_100\Versus\RIL\\", "RIL", "INSTANCES\INSTANCES_180D_F18_100\\"],
+    ["180D_F18_100_MM_", "INSTANCES\Resultados\F18_100\Versus\MM\\", "MM", "INSTANCES\INSTANCES_180D_F18_100\\"],
+    ["180D_F18_100_RI-C_", "INSTANCES\Resultados\F18_100\Versus\RI-C\\", "RI-C", "INSTANCES\INSTANCES_180D_F18_100\\"],
+    ["180D_F18_100_RIL-C_", "INSTANCES\Resultados\F18_100\Versus\RIL-C\\", "RIL-C", "INSTANCES\INSTANCES_180D_F18_100\\"],
+    ["180D_F18_100_RI-S_", "INSTANCES\Resultados\F18_100\Versus\RI-S\\", "RI-S", "INSTANCES\INSTANCES_180D_F18_100\\"],
+    ["180D_F18_100_RIL-S_", "INSTANCES\Resultados\F18_100\Versus\RIL-S\\", "RIL-S", "INSTANCES\INSTANCES_180D_F18_100\\"],
+    ["180D_F18_100_MM-S_", "INSTANCES\Resultados\F18_100\Versus\MM-S\\", "MM-S", "INSTANCES\INSTANCES_180D_F18_100\\"],
+
+    #["180D_F3_MM_", "INSTANCES\INSTANCES\Salidas\\MM\\", "MM", "INSTANCES\INSTANCES_180D_F3\\"],
+   # ["180D_F17_MM_", "INSTANCES\INSTANCES\Salidas\MM\F17\\", "MM", "INSTANCES\INSTANCES_180D_F17\\"],
+    #["180D_F175_MM_", "INSTANCES\INSTANCES\Salidas\\MM\\", "MM", "INSTANCES\INSTANCES_180D_F175\\"],
+    
 ]
 
 
 #Threading Config
 MAX_THREADS = 4
-N=25
+N=100
 sema = threading.Semaphore(MAX_THREADS)
 
 def caller(main):
@@ -66,7 +75,7 @@ for j in A:
         rep.runSimulation(quiet=True)
         end_time = time.time()
         delta = end_time - start_time
-        run_results = run_results + "{} \t {} \t ({} s \n)".format(name, rep.run_status, delta)
+        run_results = run_results + "{} \t {} \t ({} s) \n".format(name, rep.run_status, delta)
     print("---===---")
     print(run_results)
     print("---===---")

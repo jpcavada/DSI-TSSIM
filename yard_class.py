@@ -18,6 +18,7 @@ logger = logging.getLogger("sim_log")
 DEFAULT_BAY_SIZE = 4
 
 COST_TABLE = {
+                "I" : 0,
                 "C": 1,
                 "M": 3,
                 "L": 7
@@ -26,7 +27,9 @@ COST_TABLE = {
 #MEDIUM_DISTANCE_COST = 3
 #LONG_DISTANCE_COST = 7
 
-RELOCATION_CRITERIA = "MM"
+RELOCATION_CRITERIA = "mising_relocation_criteria"
+ALL_DECISIONS = False
+
 class Box:
     '''
     A container (or Box) object
@@ -440,9 +443,10 @@ class ContainerYard:
         # 1) Find all accesible Bays
         accessible_bay_list = self.YRD_findAccessileBays(box)
         # 2) Call for the new position evaluation rule
-        selected_bay, other_selected_bays = self.YRD_evaluateBoxNewBay(box, accessible_bay_list, RELOCATION_CRITERIA)
+        selected_bay, other_selected_bays, decision_string = self.YRD_evaluateBoxNewBay(box, accessible_bay_list,
+                                                                                        RELOCATION_CRITERIA, ALL_DECISIONS)
 
-        return selected_bay.BAY_getBlock(), selected_bay
+        return selected_bay.BAY_getBlock(), selected_bay, decision_string
 
     def DEP_YRD_findBoxNewPosition(self, box): #TODO esta función de nuevo
         '''
@@ -571,7 +575,7 @@ class ContainerYard:
                 list_of_blockers.append(list_of_box_in_bay[box_in_same_bay_on_top])
         #Then we check if the container is blocked from the sides, for that we check the block adyacency map.
         list_of_side_blocking_bays = box_block.BLK_getBlockingBaysList(box_bay)
-        for blocking_bay in list_of_side_blocking_bays: #TODO REVISAR CRITERIO DE BLOQUEO
+        for blocking_bay in list_of_side_blocking_bays:
             if blocking_bay.BAY_getSize() > 1:
                 if blocking_bay.BAY_getSize() >= box_index + 1: ##Criterio para que esté blockeado lateralmente
                     n_blocking_box = -box_bay.BAY_findBoxIndex(box.BOX_getName()) + blocking_bay.BAY_getSize()
@@ -634,7 +638,7 @@ class ContainerYard:
     def YRD_calculateMovementCost (self, origin, destiny):
         distance = False
         if origin == "Inbound":
-            distance = "L"
+            distance = "I"
         elif origin == "Service" or destiny == "Service":
             distance = "L"
         else:
@@ -789,16 +793,16 @@ class ContainerYard:
                 else:
                     rejection_list.append(rejection_reason)
 
-        if not accessible_bay_list:
-            for i in rejection_list: logger.critcal(i)
-            self.YRD_printYard(4,12)
-            raise Exception("No accessible bays available")
-        if not accessible_bay_list and not barely_accessible_list:
-            self.YRD_printYard(4, 12)
-            raise Exception("There are not accessible bays for (re)locating {}".format(box))
         if not accessible_bay_list and barely_accessible_list:
-            logger.info("No good relocaction bays, disabling pyramid rule")
+            logger.error("No good relocaction bays, disabling pyramid rule")
             accessible_bay_list = barely_accessible_list
+        #elif not accessible_bay_list:
+        #    for i in rejection_list: logger.error(i)
+        #    #self.YRD_printYard(4,12)
+         #   raise Exception("No accessible bays available")
+        elif not accessible_bay_list and not barely_accessible_list:
+            raise Exception("There are not accessible bays for (re)locating {}".format(box))
+
         return accessible_bay_list
 
     def YRD_findRelocationPosition(self, box, other_boxes):
@@ -818,18 +822,15 @@ class ContainerYard:
         # 2)
 
         # 2) Call for the new position evaluation rule
-        selected_bay, other_selected_bays = self.YRD_evaluateBoxNewBay(box, accessible_bay_list, RELOCATION_CRITERIA)
-
-        #Pensar cómo integrar los costos a la decision. (TODO)
-        other_selected_bay = []
-        for j in other_selected_bay:
-            other_selected_bay.append(self.YRD_calculateMovementCost(origin_bay, j))
+        selected_bay, other_selected_bays, decision_string = self.YRD_evaluateBoxNewBay(box, accessible_bay_list,
+                                                                                        RELOCATION_CRITERIA,
+                                                                                        ALL_DECISIONS)
 
 
-        return selected_bay
+        return selected_bay, decision_string
 
 
-    def YRD_evaluateBoxNewBay(self, box, accessible_bays, criteria):
+    def YRD_evaluateBoxNewBay(self, box, accessible_bays, criteria, alldecisions=False):
         '''
         Find witch bay is the best new position for box among the list of candidate bays accordding to criteria (RI,
         RIL, Min-Max) returns a list of all bays that are good choices.
@@ -839,21 +840,28 @@ class ContainerYard:
         :return choosen_bay, all_candidate_bays:
         '''
 
-        accepted_criteria_list = ["ALL", "RI", "RIL","MM"]
+        accepted_criteria_list = ["ALL", "RI", "RI-C", "RI-S", "RIL", "RIL-C", "RIL-S", "MM", "MM-S"]
         box_get_out_date = box.BOX_getDateOut()
 
         #   Return Variables forward declaraion
         selected_bay = None
         all_selected_bays = None
+        return_selected_bay = None
+
+        #list with all decisions (
+        if isinstance(box.bay, str):
+            decisions_string = str(box) + ";" + box.bay
+        else:
+            decisions_string = str(box) + ";" + str(box.bay.BAY_getName())
 
         #   Check if criteria corrsponds to an implemented one.
         if criteria not in accepted_criteria_list:
             raise Exception("Wrong criteria {}, must be on of {}".format(criteria, accepted_criteria_list))
 
-        if criteria in ["RIL","RI","ALL","MM"]:
+        if criteria in ["ALL", "RI", "RI-C", "RI-S", "RIL", "RIL-C", "RIL-S", "MM", "MM-S"]:
 
             #   Calculate the reshuffle index (number of blocked containers) for each accessible bay
-            rs_list = [] #a list for all the reshuffle index, populated in the same order that candidate bays.
+            rs_list = [] #a list for all the reshuffle index, populated in the same order that accessible bays.
             rs_earliest_leaving_time = [] #list with the earliest leave time for each candidate bays
 
             for bay_s in accessible_bays:
@@ -886,80 +894,247 @@ class ContainerYard:
                 logger.debug("{} \t {}".format(accessible_bays[i], rs_list[i]))
             ### END DEBUG RELOCATION 1 #####
             '''
-            #   Find all the stacks tha have a minimun number of blocks.
-            min_rs = numpy.min(rs_list)
-            candidate_list = []     #Lista de todos las BAY con menos bloqueos futuros
-            candidate_first_leaving_time_list = []  #Hora de salida de la primera box en salir de la bays
-            candidate_first_leaving_box_list = []   #Primera BOX en salir.
-            candidate_list_stack_size = []      #Stack size of each candidate bay
-            for it in range(len(accessible_bays)):
-                if rs_list[it] == min_rs:
-                    candidate_list.append(accessible_bays[it])
-                    candidate_first_leaving_time_list.append(rs_earliest_leaving_time[it][1])
-                    candidate_first_leaving_box_list.append(rs_earliest_leaving_time[it][0])
-                    candidate_list_stack_size.append((accessible_bays[it].BAY_getSize()))
-            '''
-            #### DEBUG RELOCATION 2 ####
-            logger.debug("CANDIDATE BAYS \t FIRST BOX LEAVING \t EARLIST LEAVE TIME")
-            for i in range(len(candidate_list)):
-                logger.debug("{}\t{}\t{}".format(candidate_list[i],
-                                          candidate_first_leaving_time_list[i],
-                                          candidate_first_leaving_box_list[i]))
-            ### END DEBUG RELOCATION 2 ####
-            '''
-            if criteria in ["RI","ALL"]:
-                #Buscamos todas las de stack size
-                min_stack_size = numpy.min(candidate_list_stack_size)
-                min_stack_candidate_list = []
-                for j in candidate_list:
-                    if j.BAY_getSize() == min_stack_size:
-                        min_stack_candidate_list.append(j)
-
-                selected_bay = min_stack_candidate_list[0]
-                all_selected_bays = min_stack_candidate_list
-
-                logger.info("RI choosed {}, Other options are {}".format(selected_bay, all_selected_bays))
-
-            if criteria in ["RIL","ALL"]:
-                #Elegimos la que tiene el mayor tiempo de salida
-                selected_bay= candidate_list[numpy.argmax(candidate_first_leaving_time_list)]
-                all_selected_bays = candidate_list
-
-                logger.info("RIL would choose {}, Other options are {}".format(selected_bay, all_selected_bays))
-
-            if criteria in ["MM","ALL"]:
-                bays_with_no_relocation_list_leavetime = []
-                bays_with_relocations_list_leavetime = []
+            if criteria in ["RI", "RIL", "MM", "ALL"] or alldecisions is True:
+                #   First create a candidate list with all stacks with the minimun number of future relocarions.
+                min_rs = numpy.min(rs_list)
+                candidate_list = []     #Lista de todos las BAY con menos bloqueos futuros
+                candidate_first_leaving_time_list = []  #Hora de salida de la primera box en salir de la bays
+                candidate_first_leaving_box_list = []   #Primera BOX en salir.
+                candidate_list_stack_size = []      #Stack size of each candidate bay
                 for it in range(len(accessible_bays)):
-                    earliest_box, earliest_time = accessible_bays[it].Bay_getFirstRetrieval()
-                    if rs_list[it] == 0:
-                       bays_with_no_relocation_list_leavetime.append([earliest_time, accessible_bays[it], earliest_box])
-                    else:
-                        bays_with_relocations_list_leavetime.append([earliest_time, accessible_bays[it], earliest_box])
+                    if rs_list[it] == min_rs:
+                        candidate_list.append(accessible_bays[it])
+                        candidate_first_leaving_time_list.append(rs_earliest_leaving_time[it][1])
+                        candidate_first_leaving_box_list.append(rs_earliest_leaving_time[it][0])
+                        candidate_list_stack_size.append((accessible_bays[it].BAY_getSize()))
+                '''
+                #### DEBUG RELOCATION 2 ####
+                logger.debug("CANDIDATE BAYS \t FIRST BOX LEAVING \t EARLIST LEAVE TIME")
+                for i in range(len(candidate_list)):
+                    logger.debug("{}\t{}\t{}".format(candidate_list[i],
+                                              candidate_first_leaving_time_list[i],
+                                              candidate_first_leaving_box_list[i]))
+                ### END DEBUG RELOCATION 2 ####
+                '''
+                if criteria in ["RI"] or alldecisions is True:
+                    #Buscamos todas las de stack size
+                    min_stack_size = numpy.min(candidate_list_stack_size)
+                    min_stack_candidate_list = []
+                    for j in candidate_list:
+                        if j.BAY_getSize() == min_stack_size:
+                            min_stack_candidate_list.append(j)
 
-                # Si existen bay sin relocacioes, entonces tomamos la que salga antes:
+                    selected_bay = min_stack_candidate_list[0]
+                    all_selected_bays = min_stack_candidate_list
 
-                if bays_with_no_relocation_list_leavetime:
-                    #### DEBUG MM ###
-                    #print("Bays with no relocation")
-                    #for a in bays_with_no_relocation_list_leavetime:
-                    #    print(a)
+                    logger.info("RI choosed {} [{}], Other options are {}".format(selected_bay, min_rs, all_selected_bays))
+                    decisions_string = decisions_string + ";" + "RI:" + str(selected_bay.BAY_getName())
+                    if criteria in ["RI"]:
+                        return_selected_bay = selected_bay
 
-                    selected_bay = bays_with_no_relocation_list_leavetime[numpy.argmin([i[0] for i in bays_with_no_relocation_list_leavetime])][1]
-                    all_selected_bays = bays_with_no_relocation_list_leavetime
-                    logger.info("MM would choose {} (No future relocations)".format(selected_bay))
+                if criteria in ["RIL"] or alldecisions is True:
+                    #Elegimos la que tiene el mayor tiempo de salida
+                    selected_bay= candidate_list[numpy.argmax(candidate_first_leaving_time_list)]
+                    all_selected_bays = candidate_list
 
-                elif bays_with_relocations_list_leavetime:
-                    #print("No bays without relocations available")
-                    #for a in bays_with_relocations_list_leavetime:
-                    #    print(a)
-                    selected_bay = bays_with_relocations_list_leavetime[numpy.argmax([i[0] for i in bays_with_relocations_list_leavetime])][1]
-                    all_selected_bays = bays_with_relocations_list_leavetime
-                    logger.info("MM would choose {} (With future relocations)".format(selected_bay))
+                    logger.info("RIL would choose {}, [{}], Other options are {}".format(selected_bay, min_rs, all_selected_bays))
+                    decisions_string = decisions_string + ";" + "RIL:" + str(selected_bay.BAY_getName())
+                    if criteria in ["RIL"]:
+                        return_selected_bay = selected_bay
+
+                if criteria in ["MM"] or alldecisions is True:
+                    bays_with_no_relocation_list_leavetime = []
+                    bays_with_relocations_list_leavetime = []
+                    for it in range(len(accessible_bays)):
+                        earliest_box, earliest_time = accessible_bays[it].Bay_getFirstRetrieval()
+                        if rs_list[it] == 0:
+                           bays_with_no_relocation_list_leavetime.append([earliest_time, accessible_bays[it], earliest_box])
+                        else:
+                            bays_with_relocations_list_leavetime.append([earliest_time, accessible_bays[it], earliest_box])
+
+                    # Si existen bay sin relocacioes, entonces tomamos la que salga antes:
+
+                    if bays_with_no_relocation_list_leavetime:
+                        #### DEBUG MM ###
+                        #print("Bays with no relocation")
+                        #for a in bays_with_no_relocation_list_leavetime:
+                        #    print(a)
+
+                        selected_bay = bays_with_no_relocation_list_leavetime[numpy.argmin([i[0] for i in bays_with_no_relocation_list_leavetime])][1]
+                        all_selected_bays = bays_with_no_relocation_list_leavetime
+                        logger.info("MM would choose {} (No future relocations)".format(selected_bay))
+
+                    elif bays_with_relocations_list_leavetime:
+                        #print("No bays without relocations available")
+                        #for a in bays_with_relocations_list_leavetime:
+                        #    print(a)
+                        selected_bay = bays_with_relocations_list_leavetime[numpy.argmax([i[0] for i in bays_with_relocations_list_leavetime])][1]
+                        all_selected_bays = bays_with_relocations_list_leavetime
+                        logger.info("MM would choose {} (With future relocations)".format(selected_bay))
+                    decisions_string = decisions_string + ";" + "MM:" + str(selected_bay.BAY_getName())
+                    if criteria in ["MM"]:
+                        return_selected_bay = selected_bay
+
+
+            #Criterias with additive movement cost:
+            if criteria in ["RI-C", "RIL-C"] or alldecisions is True:
+                # First we create a cost candidate list for each accesible bay. cost = movement + relocations
+                additive_cost_list = []
+                for it in range(len(accessible_bays)):
+                    additive_cost_list.append(rs_list[it] + self.YRD_calculateMovementCost(box.bay, accessible_bays[it]))
+                # Create a candidate list with only the minumin cost options
+                min_cost_rs = numpy.min(additive_cost_list)
+                cost_candidate_list = []  # Lista de todos las BAY con menor costo + relocaciones
+                cost_candidate_first_leaving_time_list = []  # Hora de salida de la primera box en salir de la bays
+                cost_candidate_first_leaving_box_list = []  # Primera BOX en salir.
+                cost_candidate_list_stack_size = []  # Stack size of each candidate bay
+                for it in range(len(accessible_bays)):
+                    if additive_cost_list[it] == min_cost_rs:
+                        cost_candidate_list.append(accessible_bays[it])
+                        cost_candidate_first_leaving_time_list.append(rs_earliest_leaving_time[it][1])
+                        cost_candidate_first_leaving_box_list.append(rs_earliest_leaving_time[it][0])
+                        cost_candidate_list_stack_size.append((accessible_bays[it].BAY_getSize()))
+
+                if criteria in ["RI-C"] or alldecisions is True:
+                    min_stack_size = numpy.min(cost_candidate_list_stack_size)
+                    min_stack_candidate_list = []
+                    for j in cost_candidate_list:
+                        if j.BAY_getSize() == min_stack_size:
+                            min_stack_candidate_list.append(j)
+
+                    selected_bay = min_stack_candidate_list[0]
+                    all_selected_bays = min_stack_candidate_list
+
+                    logger.info("RI-C choosed {} [{}-{}], Other options are {}".format(selected_bay,
+                                                                                        self.YRD_calculateMovementCost(
+                                                                                            box.bay, selected_bay),
+                                                                                        min_cost_rs,
+                                                                                        all_selected_bays))
+                    decisions_string = decisions_string + ";" + "RIC:" + str(selected_bay.BAY_getName())
+                    if criteria in ["RI-C"]:
+                        return_selected_bay = selected_bay
+
+                if criteria in ["RIL-C"] or alldecisions is True:
+                    # Elegimos la que tiene el mayor tiempo de salida desde la lista con costos
+                    selected_bay = cost_candidate_list[numpy.argmax(cost_candidate_first_leaving_time_list)]
+                    all_selected_bays = cost_candidate_list
+
+                    logger.info("RIL-C would choose {}, [{}-{}], Other options are {}".format(selected_bay, self.YRD_calculateMovementCost(box.bay, selected_bay), min_cost_rs,
+                                                                                         all_selected_bays))
+                    decisions_string = decisions_string + ";" + "RIL-C:" + str(selected_bay.BAY_getName())
+                    if criteria in ["RIL-C"]:
+                        return_selected_bay = selected_bay
+
+            ## CRITERIA WITH STAGGERED COSTS
+            if criteria in ["RI-S", "RIL-S", "MM-S"] or alldecisions is True:
+                # Create Staggered accessible bay list. [(cost, list_of_bays)]
+                staggered_accessible_bay_index_list = []
+
+                for cost_id in COST_TABLE.keys():
+                    staggered_accessible_bay_index_list.append((COST_TABLE[cost_id], []))
+                for it in range(len(accessible_bays)):
+                    acc_bay_cost = self.YRD_calculateMovementCost(box.bay, accessible_bays[it])
+                    for i in staggered_accessible_bay_index_list:
+                        if i[0] == acc_bay_cost:
+                            i[1].append(it)
+
+                #print("For {} in {}".format(box, box.bay))
+                #for i in staggered_accessible_bay_index_list:
+                #    print(i[0], [accessible_bays[j] for j in i[1]])
+
+                # create a candidate list using the lowest available tier only
+                staggered_lower_tier_accessible_index_list = []
+                for i in staggered_accessible_bay_index_list:
+                    if len(i[1]) != 0:
+                        staggered_lower_tier_accessible_index_list = i[1]
+                        break
+                #print([accessible_bays[j] for j in staggered_lower_tier_accessible_index_list])
+
+                #   Now create a candidate list with all stacks with the minimun number of future relocarions.
+                staggered_min_rs = numpy.min([rs_list[j] for j in staggered_lower_tier_accessible_index_list])
+                #print("Lowest rs is {}".format(staggered_min_rs))
+
+                staggered_candidate_list = []  # Lista de todos las BAY con menos bloqueos futuros en el menor tier
+                staggered_candidate_first_leaving_time_list = []  # Hora de salida de la primera box en salir de la bays
+                staggered_candidate_first_leaving_box_list = []  # Primera BOX en salir.
+                staggered_candidate_list_stack_size = []  # Stack size of each candidate bay
+                for jt in staggered_lower_tier_accessible_index_list:
+                    if rs_list[jt] == staggered_min_rs:
+                        staggered_candidate_list.append(accessible_bays[jt])
+                        staggered_candidate_first_leaving_time_list.append(rs_earliest_leaving_time[jt][1])
+                        staggered_candidate_first_leaving_box_list.append(rs_earliest_leaving_time[jt][0])
+                        staggered_candidate_list_stack_size.append((accessible_bays[jt].BAY_getSize()))
+
+                if criteria in ["RI-S"] or alldecisions is True:
+                    min_stack_size = numpy.min(staggered_candidate_list_stack_size)
+                    min_stack_candidate_list = []
+                    for j in staggered_candidate_list:
+                        if j.BAY_getSize() == min_stack_size:
+                            min_stack_candidate_list.append(j)
+
+                    selected_bay = min_stack_candidate_list[0]
+                    all_selected_bays = min_stack_candidate_list
+
+                    logger.info("RI-S choosed {} [{}], Other options are {}".format(selected_bay,
+                                                                                       self.YRD_calculateMovementCost(
+                                                                                           box.bay, selected_bay),
+                                                                                       all_selected_bays))
+                    decisions_string = decisions_string + ";" + "RI-S:" + str(selected_bay.BAY_getName())
+                    if criteria in ["RI-S"]:
+                        return_selected_bay = selected_bay
+
+                if criteria in ["RIL-S"] or alldecisions is True:
+                    # Elegimos la que tiene el mayor tiempo de salida desde la lista con costos
+                    selected_bay = staggered_candidate_list[numpy.argmax(staggered_candidate_first_leaving_time_list)]
+                    all_selected_bays = staggered_candidate_list
+
+                    logger.info("RIL-S would choose {}, [{}], Other options are {}".format(selected_bay, self.YRD_calculateMovementCost(box.bay, selected_bay),
+                                                                                         all_selected_bays))
+                    decisions_string = decisions_string + ";" + "RIL-S:" + str(selected_bay.BAY_getName())
+                    if criteria in ["RIL-S"]:
+                        return_selected_bay = selected_bay
+
+                if criteria in ["MM-S"] or alldecisions is True:
+                    bays_with_no_relocation_list_leavetime = []
+                    bays_with_relocations_list_leavetime = []
+                    for it in staggered_lower_tier_accessible_index_list:
+                        earliest_box, earliest_time = accessible_bays[it].Bay_getFirstRetrieval()
+                        if rs_list[it] == 0:
+                            bays_with_no_relocation_list_leavetime.append(
+                                [earliest_time, accessible_bays[it], earliest_box])
+                        else:
+                            bays_with_relocations_list_leavetime.append(
+                                [earliest_time, accessible_bays[it], earliest_box])
+
+                    # Si existen bay sin relocacioes, entonces tomamos la que salga antes:
+
+                    if bays_with_no_relocation_list_leavetime:
+                        #### DEBUG MM ###
+                        #print("Bays with no relocation")
+                        #for a in bays_with_no_relocation_list_leavetime:
+                        #    print(a)
+
+                        selected_bay = bays_with_no_relocation_list_leavetime[
+                            numpy.argmin([i[0] for i in bays_with_no_relocation_list_leavetime])][1]
+                        all_selected_bays = bays_with_no_relocation_list_leavetime
+                        logger.info("MM-S would choose {} (No future relocations)".format(selected_bay))
+
+                    elif bays_with_relocations_list_leavetime:
+                        # print("No bays without relocations available")
+                        # for a in bays_with_relocations_list_leavetime:
+                        #    print(a)
+                        selected_bay = bays_with_relocations_list_leavetime[
+                            numpy.argmax([i[0] for i in bays_with_relocations_list_leavetime])][1]
+                        all_selected_bays = bays_with_relocations_list_leavetime
+                        logger.info("MM-S would choose {} (With future relocations)".format(selected_bay))
+                    decisions_string = decisions_string + ";" + "MM-S:" + str(selected_bay.BAY_getName())
+                    if criteria in ["MM-S"]:
+                        return_selected_bay = selected_bay
 
         #RETURN choosen bay and all other candidate bays.
+        decisions_string = decisions_string + ";" + "F:" + str(criteria) +":" + str(return_selected_bay)
         logger.info("Choosed BAY {} using {}".format(selected_bay, criteria))
-        return selected_bay, all_selected_bays
+        return return_selected_bay, all_selected_bays, decisions_string
 
     def YRD_relocateBox(self, box, destiny_bay):
         if self.YRD_isBoxBlocked(box):
