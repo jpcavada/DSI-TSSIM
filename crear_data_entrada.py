@@ -123,7 +123,7 @@ def main(seed, output_file_name, grap=False):
         llegadas_dias.append(crear_llegadas_dia())
 
 
-    print(llegadas_dias)
+    #print(llegadas_dias)
 
     # Para cada llegada creamos un objeto arrival y le generamos la información faltante, queda guardados en una lista
     arrival_list = []
@@ -138,6 +138,7 @@ def main(seed, output_file_name, grap=False):
      #Graficos solo para ver que no pase nada raro
     if grap == True:
 
+        '''
         cantidad_llegadas_cada_dia =[]
 
         for i in llegadas_dias:
@@ -151,7 +152,7 @@ def main(seed, output_file_name, grap=False):
         print(np.average(cantidad_llegadas_cada_dia))
         #plt.figure()
         #plt.hist(np.diff(llegadas_dias), bins='auto')
-
+        '''
         #Estadisticos
         todas_llegadas = []
         todas_estadias = []
@@ -165,8 +166,18 @@ def main(seed, output_file_name, grap=False):
             if i.service == True:
                 todas_servicios_len.append(i.service_len)
 
+        fig2, b = plt.subplots(2)
+        b[0].set_xlabel("Time of day")
+        b[0].hist(todas_llegadas, bins=11)
+        b[0].set_xticks(np.arange(8*60, 19*60, step=60))
+        b[0].set_xticklabels(np.arange(8,20, step=1))
 
+        b[1].set_xlabel("Time of day")
+        b[1].hist(todas_salidas, bins=12)
+        b[1].set_xticks(np.arange(8*60, 19*60, step=60))
+        b[1].set_xticklabels(np.arange(8,20, step=1))
 
+        '''
         fig, a = plt.subplots(2,2)
         a[0][0].set_title("Llegadas")
         a[0][0].set_xlabel("Minuto del día")
@@ -187,9 +198,7 @@ def main(seed, output_file_name, grap=False):
         a[1][1].set_title("Duración Servicios")
         a[1][1].set_xlabel("Minuto del día")
         a[1][1].hist(todas_servicios_len, bins=[1,2,3,4,5])
-
-
-
+    '''
 
     '''
     def find_probability(probability, dist):
@@ -233,6 +242,8 @@ if __name__ == '__main__':
     main(273, 'arrivals_25.ini')
     '''
 
+    #180 DIAS
+
     main(788, 'arrivals_1.ini', grap=True)
     main(747, 'arrivals_2.ini')
     main(580, 'arrivals_3.ini')
@@ -248,6 +259,7 @@ if __name__ == '__main__':
     main(194, 'arrivals_13.ini')
     main(540, 'arrivals_14.ini')
     main(638, 'arrivals_15.ini')
+    '''
     main(261, 'arrivals_16.ini')
     main(751, 'arrivals_17.ini')
     main(301, 'arrivals_18.ini')
@@ -334,7 +346,7 @@ if __name__ == '__main__':
     main(430, 'arrivals_99.ini')
     main(126, 'arrivals_100.ini')
 
-
-    #main(555, 'test_sample.txt', grap=True)
+'''
+    #main(788, 'test_sample.txt', grap=True)
 
 

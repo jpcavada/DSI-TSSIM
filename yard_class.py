@@ -314,6 +314,10 @@ class Block:
     def __repr__ (self):
         return self.name + " : " + str(self.bay_list)
 
+    def BLK_export_adjacency_map(self):
+        print(self.adjacency_blocking_map)
+        print(self.invert_adjacency_blocking_map)
+
 class ContainerYard:
     '''
     The Container Yards
