@@ -208,7 +208,6 @@ class TLSSIM():
                                                               patio,
                                                               Box_arrival_list,
                                                               export_interval=129600,
-                                                              look_ahead_time=60,
                                                               file_name='export'))
 
             #----------------------------- EJECUCION ---------------------------------------#
@@ -280,8 +279,8 @@ class TLSSIM():
                 yard.YRD_getBlockByName(tokens[0][:2]).BLK_addAdjacentBay(tokens[0], tokens[1])
                 #yard.YRD_getBlock(1).BLK_addAdjacentBay("MC7", "MD7")
 
-        # for b in yard.YRD_getBlockList():
-        #   b.BLK_export_adjacency_map()
+        for b in yard.YRD_getBlockList():
+            b.BLK_export_adjacency_map()
 
     def INI_setBayDistance(self, yard, close_bays_file, medium_bays_file):
 
