@@ -13,7 +13,7 @@ import sys
 #OUT_DIR = "INSTANCES\INSTANCES_180D_F18\Salidas\\MM\\"
 
 A = [
-    ["180D_F18_100_MM_", "INSTANCES\Resultados\F18_100\Versus\MM\\", "MM", "INSTANCES\INSTANCES_180D_F18_100\\"],
+    ["ST_180D_F18_100_MM_", "INSTANCES/Resultados/F18_100_ST_E_MM-S/", "MM-S", "INSTANCES/INSTANCES_180D_F18_100_ST/"],
  #   ["180D_F18_100_RI_", "INSTANCES\Resultados\F18_100\Versus\RI\\", "RI", "INSTANCES\INSTANCES_180D_F18_100\\"],
  #   ["180D_F18_100_RIL_", "INSTANCES\Resultados\F18_100\Versus\RIL\\", "RIL", "INSTANCES\INSTANCES_180D_F18_100\\"],
   #  ["180D_F18_100_MM_", "INSTANCES\Resultados\F18_100\Versus\MM\\", "MM", "INSTANCES\INSTANCES_180D_F18_100\\"],
@@ -31,7 +31,7 @@ A = [
 
 
 #Threading Config
-MAX_THREADS = 4
+MAX_THREADS = 12
 N=1
 sema = threading.Semaphore(MAX_THREADS)
 

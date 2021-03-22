@@ -1,8 +1,12 @@
+"""
+Generador de llegadas y salidas estocásticas
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-OUTPUT_FOLDER = "INSTANCES\INSTANCES_180D_F18_100"
+OUTPUT_FOLDER = "INSTANCES/INSTANCES_180D_F18_100_ST"
 random_state = None
 random_state2 = None  # Utilizado para la instancias del modelo estocastico
 T_INICIAL = 8 * 60
@@ -31,18 +35,18 @@ DIST_ACUMULADA_PROBABILIDAD_SALIDAS = [(8, 0.03452914798206278),
                                        (17, 1.0)]
 
 
-class Arrival:
+class Arrival_st:
     '''
     Clase que guarda toda la informacion de cada llegada y salida usando informacion deterministica
     '''
 
-
-    def __init__(self, day, minute):
+    def __init__(self, day, minute, error_desvest):
         """
         Arribo con llegadas deterministicas
-        :param day: dia en que llega el contenedor
+        :param day: dia en que el contenedor
         :param minute: minuto en que llega el contenedor
         """
+
         self.arrival_day = day
         self.arrival_min = minute
         self.stay_time = int(np.ceil(-np.log(1 - random_state.rand()) * TASA_ESTADIA))
@@ -56,9 +60,9 @@ class Arrival:
 
         if random_state.rand() <= SERVICE_CHANCE:
             self.service = True
-            #Si tiene servicio le sorteamos una duracion
-            self.service_len = random_state.randint(RANGO_SERVICIO_EN_HORA[0], RANGO_SERVICIO_EN_HORA[1]+1)
-            self.service_day = random_state.randint(self.arrival_day, self.arrival_day+self.stay_time + 1)
+            # Si tiene servicio le sorteamos una duracion
+            self.service_len = random_state.randint(RANGO_SERVICIO_EN_HORA[0], RANGO_SERVICIO_EN_HORA[1] + 1)
+            self.service_day = random_state.randint(self.arrival_day, self.arrival_day + self.stay_time + 1)
             if self.service_day == (self.arrival_day + self.stay_time):
                 self.service_min = random_state.randint(T_INICIAL, self.leave_min)
             else:
@@ -74,7 +78,6 @@ class Arrival:
             self.service_day = 0
             self.service_min = 0
             self.service_len = 0
-
 
     def __repr__(self):
         return "Arrive Day {}, Min {}, Stays for {} days, leaves at {}. Service {}\n".format(self.arrival_day,
@@ -108,17 +111,19 @@ def crear_llegadas_dia():
                 I = I + 1
     return llegadas_dia
 
-#WRITE ARRIVAL FILE
 
-def write_arrival_file(arrival_list, file_name, Min_to_Timestep_coeff = 1):
+# WRITE ARRIVAL FILE
+
+def write_arrival_file(arrival_list, file_name, Min_to_Timestep_coeff=1):
     file = open(file_name, "w+")
     count = 0
     for i in arrival_list:
-        ts_arrival = int((i.arrival_day*1440 + i.arrival_min)/Min_to_Timestep_coeff)
-        ts_leave = int(((i.arrival_day + i.stay_time)*1440 + i.leave_min)/Min_to_Timestep_coeff)
+        ts_arrival = int((i.arrival_day * 1440 + i.arrival_min) / Min_to_Timestep_coeff)
+        ts_leave = int(((i.arrival_day + i.stay_time) * 1440 + i.leave_min) / Min_to_Timestep_coeff)
         name = "C{}-{}-{}".format(i.arrival_day, count, i.arrival_day + i.stay_time)
         count = count + 1
         file.write("{} {} {}\n".format(name, ts_arrival, ts_leave))
+
 
 def main(seed, output_file_name, grap=False):
     global random_state
@@ -133,8 +138,7 @@ def main(seed, output_file_name, grap=False):
     for dia in range(DIAS):
         llegadas_dias.append(crear_llegadas_dia())
 
-
-    #print(llegadas_dias)
+    # print(llegadas_dias)
 
     # Para cada llegada creamos un objeto arrival y le generamos la información faltante, queda guardados en una lista
     arrival_list = []
@@ -146,7 +150,7 @@ def main(seed, output_file_name, grap=False):
     if not os.path.exists(OUTPUT_FOLDER):
         os.makedirs(OUTPUT_FOLDER)
     write_arrival_file(arrival_list, OUTPUT_FOLDER + "\\" + output_file_name)
-     #Graficos solo para ver que no pase nada raro
+    # Graficos solo para ver que no pase nada raro
     if grap == True:
 
         '''
@@ -164,7 +168,7 @@ def main(seed, output_file_name, grap=False):
         #plt.figure()
         #plt.hist(np.diff(llegadas_dias), bins='auto')
         '''
-        #Estadisticos
+        # Estadisticos
         todas_llegadas = []
         todas_estadias = []
         todas_salidas = []
@@ -180,13 +184,13 @@ def main(seed, output_file_name, grap=False):
         fig2, b = plt.subplots(2)
         b[0].set_xlabel("Time of day")
         b[0].hist(todas_llegadas, bins=11)
-        b[0].set_xticks(np.arange(8*60, 19*60, step=60))
-        b[0].set_xticklabels(np.arange(8,20, step=1))
+        b[0].set_xticks(np.arange(8 * 60, 19 * 60, step=60))
+        b[0].set_xticklabels(np.arange(8, 20, step=1))
 
         b[1].set_xlabel("Time of day")
         b[1].hist(todas_salidas, bins=12)
-        b[1].set_xticks(np.arange(8*60, 19*60, step=60))
-        b[1].set_xticklabels(np.arange(8,20, step=1))
+        b[1].set_xticks(np.arange(8 * 60, 19 * 60, step=60))
+        b[1].set_xticklabels(np.arange(8, 20, step=1))
 
         '''
         fig, a = plt.subplots(2,2)
@@ -224,6 +228,7 @@ def main(seed, output_file_name, grap=False):
         print("{} cae en el bin {}".format(random_number, n))
     '''
 
+
 if __name__ == '__main__':
     '''
     main(443, 'arrivals_1.ini')
@@ -253,7 +258,7 @@ if __name__ == '__main__':
     main(273, 'arrivals_25.ini')
     '''
 
-    #180 DIAS
+    # 180 DIAS
 
     main(788, 'arrivals_1.ini', grap=True)
     main(747, 'arrivals_2.ini')
@@ -358,6 +363,4 @@ if __name__ == '__main__':
     main(126, 'arrivals_100.ini')
 
 '''
-    #main(788, 'test_sample.txt', grap=True)
-
-
+    # main(788, 'test_sample.txt', grap=True)

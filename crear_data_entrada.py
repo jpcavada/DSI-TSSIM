@@ -2,8 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-OUTPUT_FOLDER = "INSTANCES\INSTANCES_180D_F18_100"
+OUTPUT_FOLDER = "INSTANCES/INSTANCES_180D_F18_100_ST"
 random_state = None
+random_state2 = None  # Utilizado para la instancias del modelo estocastico
 T_INICIAL = 8 * 60
 T_FINAL = 18 * 60
 FACTOR_DE_ESCALA = 1.8
@@ -16,7 +17,7 @@ TASA_LLEGADA = [(11, 3.66),
                 (14, 7.05),
                 (18, 8.97)]
 
-TASA_ESTADIA = 12 #dias
+TASA_ESTADIA = 12  # dias
 # Limite in
 DIST_ACUMULADA_PROBABILIDAD_SALIDAS = [(8, 0.03452914798206278),
                                        (9, 0.11569506726457399),
@@ -32,12 +33,18 @@ DIST_ACUMULADA_PROBABILIDAD_SALIDAS = [(8, 0.03452914798206278),
 
 class Arrival:
     '''
-    Clase que guarda toda la informacion de cada llegada
+    Clase que guarda toda la informacion de cada llegada y salida usando informacion deterministica
     '''
 
-    def __init__(self, day, min):
+
+    def __init__(self, day, minute):
+        """
+        Arribo con llegadas deterministicas
+        :param day: dia en que llega el contenedor
+        :param minute: minuto en que llega el contenedor
+        """
         self.arrival_day = day
-        self.arrival_min = min
+        self.arrival_min = minute
         self.stay_time = int(np.ceil(-np.log(1 - random_state.rand()) * TASA_ESTADIA))
 
         # Generamos la hora de salida:
@@ -116,6 +123,10 @@ def write_arrival_file(arrival_list, file_name, Min_to_Timestep_coeff = 1):
 def main(seed, output_file_name, grap=False):
     global random_state
     random_state = np.random.RandomState(seed)
+
+    global random_state_2
+    random_state_2 = np.random.RandomState(seed + 1)
+
     # Primero creamos todas las llegades de todos los dias, estas se guardan en un arreglo para cada día.
     llegadas_dias = []
     todas_horas_llegada_dia = []
@@ -134,7 +145,7 @@ def main(seed, output_file_name, grap=False):
     import os
     if not os.path.exists(OUTPUT_FOLDER):
         os.makedirs(OUTPUT_FOLDER)
-    write_arrival_file(arrival_list, OUTPUT_FOLDER + "\\" + output_file_name)
+    write_arrival_file(arrival_list, OUTPUT_FOLDER + "/" + output_file_name)
      #Graficos solo para ver que no pase nada raro
     if grap == True:
 
@@ -244,7 +255,7 @@ if __name__ == '__main__':
 
     #180 DIAS
 
-    main(788, 'arrivals_1.ini', grap=True)
+    main(788, 'arrivals_1.ini')
     main(747, 'arrivals_2.ini')
     main(580, 'arrivals_3.ini')
     main(640, 'arrivals_4.ini')
@@ -259,7 +270,6 @@ if __name__ == '__main__':
     main(194, 'arrivals_13.ini')
     main(540, 'arrivals_14.ini')
     main(638, 'arrivals_15.ini')
-    '''
     main(261, 'arrivals_16.ini')
     main(751, 'arrivals_17.ini')
     main(301, 'arrivals_18.ini')
@@ -346,7 +356,7 @@ if __name__ == '__main__':
     main(430, 'arrivals_99.ini')
     main(126, 'arrivals_100.ini')
 
-'''
+
     #main(788, 'test_sample.txt', grap=True)
 
 

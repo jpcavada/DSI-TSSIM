@@ -10,6 +10,7 @@ import yard_class
 import simpy
 import os
 
+from pathlib import Path
 import json
 import logging
 
@@ -39,7 +40,7 @@ BAYS_WIDE_NAMES = ["A", "B", "X", "Y"]
 BAYS_LONG_SIZE = 12
 BAYS_HIGH_SIZE = 4
 
-INITIAL_BOX_FILE = r"input_files/arrivalstest.ini"
+INITIAL_BOX_FILE = "input_files/arrivalstest.ini"
 INITIAL_SERVICE_FILE = "input_files/services.ini"
 
 BLOCKING_BAYS_FILE = "input_files/layout_blocking_bays.ini"
@@ -49,6 +50,7 @@ MEDIUM_BAYS_FILE = "input_files/layout_bay_distance_medium.ini"
 OUTPUT_FILES_FOLDER = "output_files/"
 RELOCATION_CRITERIA = "RI"
 
+JSON_EXPORT_PATH = "export/"
 
 CRANES_NUM = 1
 SERVICE_AREA_SIZE = 2
@@ -86,6 +88,8 @@ class TLSSIM():
         OUTPUT_FILES_FOLDER = outputdir
         if not os.path.exists(OUTPUT_FILES_FOLDER):
             os.makedirs(OUTPUT_FILES_FOLDER)
+        if not os.path.exists(JSON_EXPORT_PATH):
+            os.makedirs(JSON_EXPORT_PATH)
 
         logging.getLogger().setLevel(logging.DEBUG)
         self.logger = logging.getLogger('sim_log')
@@ -93,33 +97,6 @@ class TLSSIM():
         file_handler = logging.FileHandler(OUTPUT_FILES_FOLDER + INSTANCE_NAME + '.log', 'a')
         file_handler.setLevel(logging.ERROR)
         self.logger.addHandler(file_handler)
-
-
-
-
-        '''# Read Configuration parameters and files
-        try:
-            opts, args = getopt.getopt(argv, "", ["name=", "arrivals=", "criteria=", "outputdir="])
-        except getopt.GetoptError:
-            print("error")
-            sys.exit(2)
-        for opt, arg in opts:
-            if opt == '--name':
-                global INSTANCE_NAME
-                INSTANCE_NAME = arg
-            elif opt in ("--arrivals"):
-                global INITIAL_BOX_FILE
-                INITIAL_BOX_FILE = arg
-            elif opt in ("--criteria"):
-                global RELOCATION_CRITERIA
-                RELOCATION_CRITERIA = arg
-            elif opt in ("--outputdir"):
-                global OUTPUT_FILES_FOLDER
-                OUTPUT_FILES_FOLDER = arg
-                if not os.path.exists(OUTPUT_FILES_FOLDER):
-                    os.makedirs(OUTPUT_FILES_FOLDER)
-        '''
-
 
     def runSimulation(self, quiet=False):
         global patio
@@ -209,7 +186,7 @@ class TLSSIM():
                                                               Box_arrival_list,
                                                               export_interval=129600,
                                                               look_ahead_time=60,
-                                                              file_name='export'))
+                                                              file_name=JSON_EXPORT_PATH))
 
             #----------------------------- EJECUCION ---------------------------------------#
             self.logger.warning("INICIO SIMULACION")
@@ -219,7 +196,7 @@ class TLSSIM():
             self.logger.info("------------------------- Fin Simulacion-----------------------")
             self.logger.info("=========== FINAL YARD LAYOUT =============")
             patio.YRD_printYard(len(BAYS_WIDE_NAMES), BAYS_LONG_SIZE)
-            self.export_snapshot(self.DATA_SNAPSHOTS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_snapshots.txt")
+            self.export_snapshot(self.DATA_SNAPSHOTS, OUTPUT_FILES_FOLDER + '/' + INSTANCE_NAME + "_snapshots.txt")
             self.logger.info("============= REMOVED BOXES ===============")
             self.logger.info(str(patio.removed_box_list))
 
@@ -227,22 +204,22 @@ class TLSSIM():
             self.logger.info(str(sim_res_CRANES.data))
             self.logger.info("=========== REGISTIO EVENTOS: ARRIVALS ==============")
             self.logger.info(str(self.DATA_BOX_ARRIVALS))
-            self.export_data(self.DATA_BOX_ARRIVALS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_arrivals.txt")
+            self.export_data(self.DATA_BOX_ARRIVALS, OUTPUT_FILES_FOLDER + '/' + INSTANCE_NAME + "_arrivals.txt")
             self.logger.info("=========== REGISTIO EVENTOS: REMOVALS ==============")
             self.logger.info(str(self.DATA_BOX_REMOVALS))
-            self.export_data(self.DATA_BOX_REMOVALS, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_removals.txt")
+            self.export_data(self.DATA_BOX_REMOVALS, OUTPUT_FILES_FOLDER + '/' + INSTANCE_NAME + "_removals.txt")
             self.logger.info("=========== REGISTIO EVENTOS: RELOCATIONS ==============")
             self.logger.info(str(self.DATA_BOX_RELOCATIONS))
-            self.export_data(self.DATA_BOX_RELOCATIONS, OUTPUT_FILES_FOLDER +'\\' + INSTANCE_NAME + "_relocations.txt")
+            self.export_data(self.DATA_BOX_RELOCATIONS, OUTPUT_FILES_FOLDER +'/' + INSTANCE_NAME + "_relocations.txt")
             self.logger.info("=========== REGISTIO EVENTOS: SERVICES ==============")
             self.logger.info(str(self.DATA_BOX_SERVICE))
 
-            self.export_data(self.DATA_DECISION, OUTPUT_FILES_FOLDER +'\\' + INSTANCE_NAME + "_decisions.txt")
+            self.export_data(self.DATA_DECISION, OUTPUT_FILES_FOLDER +'/' + INSTANCE_NAME + "_decisions.txt")
             #self.export_data(self.DATA_DECISION, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_decisions2.txt")
 
-            self.export_data(self.DATA_BOX_SERVICE, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_services.txt")
+            self.export_data(self.DATA_BOX_SERVICE, OUTPUT_FILES_FOLDER + '/' + INSTANCE_NAME + "_services.txt")
             #export_data(self.DATA_NUMBER_OF_BOXES, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_box_counter.txt")
-            self.export_snapshot(self.DATA_NUMBER_OF_BOXES_DAY, OUTPUT_FILES_FOLDER + '\\' + INSTANCE_NAME + "_box_counter_day.txt" )
+            self.export_snapshot(self.DATA_NUMBER_OF_BOXES_DAY, OUTPUT_FILES_FOLDER + '/' + INSTANCE_NAME + "_box_counter_day.txt" )
             self.run_status = "COMPLETE"
 
             handlers = self.logger.handlers[:]
@@ -631,7 +608,7 @@ class TLSSIM():
             self.run_status = int(((env.now / FINAL_SIM_CLOCK)*100 + 1))
 
     def GEN_export_sim_status(self, env, yard, arrivals,
-                              export_interval=1440, look_ahead_time=1440, file_name='export'):
+                              export_interval=1440, look_ahead_time=1440, file_name=JSON_EXPORT_PATH):
         """
         A intervalos regulares exporta el status del patio en un JSON
             :param arrivals:
@@ -696,11 +673,11 @@ class TLSSIM():
 
             # Export JSON files
             export_data = {
-#               'posiciones': positions,
                 'contenedores': cont_list,
                 'cont_llegadas': llegan_cont
             }
-            with open(file_name + '.json', 'w+') as outfile:
+            p1 = Path(file_name + 'contenedores.json')
+            with p1.open(mode='w+') as outfile:
                 json.dump(export_data, outfile, indent=4)
 
             if Reporte_inicial_ok == 0:
@@ -708,7 +685,8 @@ class TLSSIM():
                     'posiciones': positions,
                     'distancias': distancias
                 }
-                with open(file_name + '_posiciones.json', 'w+') as outfile:
+                p2 = Path(file_name + 'posiciones.json')
+                with p2.open(mode='w+') as outfile:
                     json.dump(export_data_pos, outfile, indent=4)
                 Reporte_inicial_ok = 1
 
@@ -753,7 +731,7 @@ if __name__ == '__main__':
 
     #sim = TLSSIM()
     sim = TLSSIM(name="LACAGA",
-                 outputdir="./INSTANCES/DEBUG/Salidas",
+                 outputdir="./INSTANCES/DEBUG/Salidas/",
                  criteria="MM",
                  arrivals="./INSTANCES/INSTANCES_180D_F2_100/arrivals_1.ini")
     start_time = time.time()

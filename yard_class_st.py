@@ -35,7 +35,7 @@ class Box:
     A container (or Box) object
     '''
     
-    def __init__ (self, name, date_in=None, date_out=None, date_service=None):
+    def __init__ (self, name, date_in=None, date_out=None, date_service=None, r_date_out=None, r_date_in=None):
         self.name = name
         self.date_in = date_in
         self.date_out = date_out
@@ -45,6 +45,9 @@ class Box:
         self.last_bay = None
         self.removalTime = -1
         self.in_service = False
+
+        self.expected_date_in = int(numpy.trunc(self.date_in / 1440)) * 1440 + 420
+        self.expected_date_out = int(numpy.trunc(self.date_out / 1440)) * 1440 + 1200
             
     def BOX_getName(self):
         return self.name
@@ -75,7 +78,13 @@ class Box:
         '''
         self.block = block
         self.bay = bay
-    
+
+    def BOX_getExpectedDateIn(self):
+        return self.expected_date_in
+
+    def BOX_getExpectedDateOut(self):
+        return self.expected_date_out
+
     def __repr__(self):
         return self.name
         #return str([self.name, self.getDateIn(), self.position["bay"]])
@@ -245,12 +254,12 @@ class Block:
         '''
         Creates a new bay in the block
         
-        Creates a new bay in the block, if no parameters are given the bay would by empty and hava a maximun size of 4 containers
+        Creates a new bay in the block, if no parameters are given the bay would by empty and hava a maximun size of 4
+        containers.
         
         Parameters:
-                bay_box_list (list, optional) : an initial set of containers already in the bay. Defauly empty.
-                max_bay_size (int, optional) : the number of containers that can be stacked on the bay. Defualt 4.
-                bay_name (string, optional) : the name of the bay for referencias purposes. Default None.
+                :param bay_name:  the number of containers that can be stacked on the bay. Defualt 4.
+                :param bay_max_size: the name of the bay for referencias purposes. Default None.
         '''
         newBay = Bay(max_size=bay_max_size,name=bay_name,block=self)
 
@@ -286,29 +295,29 @@ class Block:
         return self.name
 
     def BLK_addAdjacentBay(self, blocked_bay_name, blocking_bay_name):
-        '''
+        """
         Add the bay position (high) to the list of positions that block [box] movement.
-        :param blocked_bay : the bay being blocked at index
-        :param blocking_bay: the bay that may block box
-        '''
+        :param blocked_bay_name : the bay being blocked at index
+        :param blocking_bay_name: the bay that may block box
+        """
         self.adjacency_blocking_map[blocked_bay_name].append(self.BLK_getBayByName(blocking_bay_name))
         self.invert_adjacency_blocking_map[blocking_bay_name].append(self.BLK_getBayByName(blocked_bay_name))
         logger.info("Added Adjacency: bay {} is now blocked by bay {}".format(blocked_bay_name, blocking_bay_name))
 
     def BLK_getBlockingBaysList(self, blocked_bay):
-        '''
+        """
         Returns a list of all the bays that could block [blocked_bay]
         :param blocked_bay:
         :return: list of all the potentially blocking bays
-        '''
+        """
         return self.adjacency_blocking_map[blocked_bay.BAY_getName()]
 
     def BLK_getInvertedBlockingBaysList(self, blocking_bay):
-        '''
+        """
         Returns a list of all the bays that are blocked by [blocking_bay]
         :param blocking_bay:
         :return: list of all the potentially blocked bays
-        '''
+        """
         return self.invert_adjacency_blocking_map[blocking_bay.BAY_getName()]
 
     def __repr__ (self):
@@ -318,28 +327,29 @@ class Block:
         print(self.adjacency_blocking_map)
         print(self.invert_adjacency_blocking_map)
 
+
 class ContainerYard:
-    '''
+    """
     The Container Yards
-    
+
     A container yard is a set of blocks and bays in with containers are stored.
-    
+
     Attributes:
         block_num (int): number of blocks in the yard
         block_list (list) : a list of the blocks in the yard.
         transfer_cost (list,list)
-    '''
+    """
 
     def __init__ (self, block_num, block_names=None, relocation_criteria=RELOCATION_CRITERIA):
-        '''
+        """
         Creates a new container yard.
-        
+
         Creates a new container yard with a set number of blocks.
-        
+
         Parameters:
             block_num (int) : the number of blocks in the yard
             block_names (list): a list with all the names of the block. If no paremeter is given the blocks will be named numericaly from starting from zero.
-        '''
+        """
         self.block_list = []
         self.removed_box_list = []
         self.service_list_pending = []
@@ -349,7 +359,7 @@ class ContainerYard:
         RELOCATION_CRITERIA = relocation_criteria
 
         for i in range(block_num):
-            if block_names==None:
+            if block_names is None:
                 self.block_list.append(Block(i))
             else:
                 self.block_list.append(Block(block_names[i]))
@@ -452,115 +462,6 @@ class ContainerYard:
 
         return selected_bay.BAY_getBlock(), selected_bay, decision_string
 
-    def DEP_YRD_findBoxNewPosition(self, box): #TODO esta función de nuevo
-        '''
-        Function to find a new container position.
-        
-        returns the block and bay index and name were the new container should be located.
-        
-        :returns: block, bay : First argument is the destiny block and second return argument is de destiny bay.
-        '''
-
-        '''
-        #This Code Orders all containers on after the other.
-        for block_iter in self.getBlockList():
-            for bay_iter in block_iter.getBayList():
-                if not bay_iter.isFull():
-                    return block_iter, bay_iter
-        return None,None
-        '''
-        #This Code version asigns a random position, if not available it would choose again until it finds a non full bay.
-        '''
-        need_to_find_location = True
-        r_block = None
-        r_bay = None
-        while need_to_find_location:
-            #Choose a random block
-            random_block = numpy.random.randint(0, len(self.YRD_getBlockList()))
-            random_bay = numpy.random.randint(0, len(self.YRD_getBlock(random_block).BLK_getBayList()))
-            r_block = self.YRD_getBlock(random_block)
-            r_bay = self.YRD_getBlock(random_block).BLK_getBay(random_bay)
-            if not(r_bay.BAY_isFull()) and not(self.YRD_isBayBlocked(r_bay)):
-                need_to_find_location = False
-            else:
-                logger.info("Intento mover {} a {} pero es inaccesible".format(box.BOX_getName(), str(r_bay)))
-        '''
-        #Here is the version of the code implementing the basic sorting and reposition algorith;
-        r_bay = None
-        r_block = None
-
-        empty_bay_list = []
-        empty_bay_adjacent_no = []
-        non_blocking_candidate_bay_list = []
-        non_blocking_candidate_bay_top_box_time_difference = []
-        blocking_candidate_bay_list = []
-        blocking_candidate_bay_top_box_time_difference = []
-
-        for blocks in self.YRD_getBlockList():
-            for target_bay in blocks.BLK_getBayList():
-                valid_bay = True
-                # Si esta llena la bay no es candidata
-                if target_bay.BAY_isFull():
-                    valid_bay = False
-                # Si la bahia esta bloqueada no es opcion.
-                if self.YRD_isBayBlocked(target_bay):
-                    valid_bay = False
-                # Regla de la piramide
-                for blocked_bay in blocks.BLK_getInvertedBlockingBaysList(target_bay):
-                    if blocked_bay.BAY_getSize() <= target_bay.BAY_getSize():
-                        valid_bay = False
-
-                if valid_bay:  # Si tiene contenedores veo si genera un bloqueo o no:
-                    if target_bay.BAY_getSize() == 0: #Si esta vacia, la agrego a la lista correspondiente
-                        empty_bay_list.append(target_bay)
-                        empty_bay_adjacent_no.append(len(blocks.BLK_getBlockingBaysList(target_bay)))
-
-                    else:
-                        top_box_date_out = target_bay.BAY_getBox(target_bay.BAY_getSize()-1).BOX_getDateOut()
-                        delta_out = top_box_date_out - box.BOX_getDateOut()
-                        if 0 < delta_out: #box nuevo sale antes que el top
-                            non_blocking_candidate_bay_list.append(target_bay)
-                            non_blocking_candidate_bay_top_box_time_difference.append(delta_out)
-                        else: #box nuevo sale despues del top
-                            blocking_candidate_bay_list.append(target_bay)
-                            blocking_candidate_bay_top_box_time_difference.append(delta_out)
-
-        #Eligo en prioridad bahia libre - bahia que no bloquea - bahia que bloquea
-        if empty_bay_list:
-            max_block_no = 10#0
-            incumbent = 0
-            for i in range(0,len(empty_bay_list)):
-                if empty_bay_adjacent_no[i] < max_block_no: #leq
-                    incumbent = i
-                    max_block_no = empty_bay_adjacent_no[i]
-            r_bay = empty_bay_list[incumbent]
-            r_block = empty_bay_list[incumbent].BAY_getBlock()
-
-        elif non_blocking_candidate_bay_list : #elijo la de menor delta
-            min_delta = 0
-            incumbent = 0
-            for i in range(0, len(non_blocking_candidate_bay_list)):
-                if non_blocking_candidate_bay_top_box_time_difference[i] < min_delta:
-                    incumbent = i
-                    min_delta = non_blocking_candidate_bay_top_box_time_difference[i]
-            r_bay = non_blocking_candidate_bay_list[incumbent]
-            r_block = non_blocking_candidate_bay_list[incumbent].BAY_getBlock()
-
-        elif blocking_candidate_bay_list:  # elijo la de mayor delta
-            max_delta = 0
-            incumbent = 0
-            for i in range(0, len(blocking_candidate_bay_list)):
-                if blocking_candidate_bay_top_box_time_difference[i] > max_delta:
-                    incumbent = i
-                    max_delta = blocking_candidate_bay_top_box_time_difference[i]
-            r_bay = blocking_candidate_bay_list[incumbent]
-            r_block = blocking_candidate_bay_list[incumbent].BAY_getBlock()
-
-        else:
-            self.YRD_printYard(4, 12)
-            raise Exception("No available location for {}".format(box.BOX_getName()))
-        return r_block, r_bay
-
     def YRD_isBoxBlocked(self, box):
         '''
         Finds if box is blocked or not. If box is blocked returns a list of all blocking box IN THE ORDER they need to
@@ -586,28 +487,6 @@ class ContainerYard:
                     for side_blocking_box in blocking_bay.BAY_getBoxList()[-n_blocking_box:]:
                         list_of_blockers.append(side_blocking_box)
         return list_of_blockers[::-1]
-
-    def DEP_YRD_ReshuffleIndexList(self, new_box, target_bay):
-        '''
-        Returns a list of the containers that would be time-blocked if [new_box] is placed a top of [target_bay]. A
-        container is considered time-blocked if 1) [new_box] Leaving date is after the leaving date of the container AND
-         it physically blocks its retrieval (either because is on top or in a blocking bay).
-        :param new_box: the container that would be located
-        :param target_bay: the bay where the container would be placed.
-        :return: a list of all the bloqued containers.
-        '''
-        list_of_blocked_boxes = []
-        new_box_get_out_date = new_box.BOX_getDateOut()
-        new_box_position = target_bay.BAY_getSize()
-        for box_in_target_bay in target_bay.BAY_getBoxList():
-            if box_in_target_bay.BOX_getDateOut() <= new_box_get_out_date:
-                list_of_blocked_boxes.append(box_in_target_bay)
-        for bay_blocked_target_bay in target_bay.BAY_getBlock().BLK_getInvertedBlockingBaysList(target_bay):
-            for box_in_blocked_bay in bay_blocked_target_bay.BAY_getBoxList():
-                if box_in_blocked_bay.BOX_getDateOut() <= new_box_get_out_date:
-                    if new_box_position >= bay_blocked_target_bay.BAY_findBoxIndex(box_in_blocked_bay.BOX_getName()):
-                        list_of_blocked_boxes.append(box_in_blocked_bay)
-        return list_of_blocked_boxes
 
     def YRD_isBayBlocked(self, bay):
         '''
@@ -845,7 +724,7 @@ class ContainerYard:
         '''
 
         accepted_criteria_list = ["ALL", "RI", "RI-C", "RI-S", "RIL", "RIL-C", "RIL-S", "MM", "MM-S"]
-        box_get_out_date = box.BOX_getDateOut()
+        box_get_out_date = box.BOX_getExpectedDateOut()
 
         #   Return Variables forward declaraion
         selected_bay = None
@@ -865,25 +744,25 @@ class ContainerYard:
         if criteria in ["ALL", "RI", "RI-C", "RI-S", "RIL", "RIL-C", "RIL-S", "MM", "MM-S"]:
 
             #   Calculate the reshuffle index (number of blocked containers) for each accessible bay
-            rs_list = [] #a list for all the reshuffle index, populated in the same order that accessible bays.
-            rs_earliest_leaving_time = [] #list with the earliest leave time for each candidate bays
+            rs_list = []  # a list for all the reshuffle index, populated in the same order that accessible bays.
+            rs_earliest_leaving_time = []  # list with the earliest leave time for each candidate bays
 
             for bay_s in accessible_bays:
-                boxes_blocked_by_box_if_moved_to_bay_s = [] #Initialize B_{cs}^{-1}=\phi
+                boxes_blocked_by_box_if_moved_to_bay_s = []  # Initialize B_{cs}^{-1}=\phi
                 for boxes in bay_s.BAY_getBoxList():
-                    if boxes.BOX_getDateOut() <= box_get_out_date:
+                    if boxes.BOX_getExpectedDateOut() < box_get_out_date:  # TODO revisar simbolo comparacion
                         boxes_blocked_by_box_if_moved_to_bay_s.append(boxes)
                 for bay_blocked_by_bay_s in bay_s.BAY_getBlock().BLK_getInvertedBlockingBaysList(bay_s):
                     if bay_blocked_by_bay_s.BAY_getSize() > 1:
                         for box_in_blocked_bay in bay_blocked_by_bay_s.BAY_getBoxList():
-                            if box_in_blocked_bay.BOX_getDateOut() <= box_get_out_date:
+                            if box_in_blocked_bay.BOX_getExpectedDateOut() < box_get_out_date:  # TODO revisar simbolo
                                 if bay_s.BAY_getSize() >= bay_blocked_by_bay_s.BAY_findBoxIndex(box_in_blocked_bay.BOX_getName()):
                                     boxes_blocked_by_box_if_moved_to_bay_s.append(box_in_blocked_bay)
                 rs_list.append(len(boxes_blocked_by_box_if_moved_to_bay_s))
                 #print(boxes_blocked_by_box_if_moved_to_bay_s)
                 leave_time_aux = []
                 for i in boxes_blocked_by_box_if_moved_to_bay_s:
-                    leave_time_aux.append(i.BOX_getDateOut())
+                    leave_time_aux.append(i.BOX_getExpectedDateOut())
                 #print(leave_time_aux)
                 if leave_time_aux:
                     rs_earliest_leaving_time.append([boxes_blocked_by_box_if_moved_to_bay_s[numpy.argmin(leave_time_aux)],

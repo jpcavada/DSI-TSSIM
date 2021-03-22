@@ -154,18 +154,20 @@ def main_ocupacion():
     plt.xticks(np.arange(0, 190, step=30))
 
 def main_relocaciones():
-    scenario_path = [(r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\MM", "MM"),
-                     (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\MM-S", "MM-S"),
-                     (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI", "RI"),
-                     (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI-C", "RI-C "),
-                     (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI-S", "RI-S"),
-                     (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL", "RIL"),
-                     (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL-C", "RIL-C"),
-                     (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL-S", "RIL-S")
+    scenario_path = [(r"./INSTANCES/Resultados/F18_MM", "DET"),
+                     (r"./INSTANCES/Resultados/F18_100_ST", "ST <= bloquea"),
+                     (r"./INSTANCES/Resultados/F18_100_ST_E", "ST < bloquea"),
+                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\MM-S", "MM-S"),
+                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI", "RI"),
+                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI-C", "RI-C "),
+                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI-S", "RI-S"),
+                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL", "RIL"),
+                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL-C", "RIL-C"),
+                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL-S", "RIL-S")
                      ]
 
-    scenario_name = "Low congestion"
-    rho = 0.61
+    scenario_name = "Comparacion MM sin hora de salida"
+    rho = 0.77
 
     box_plot_data = []
     scenario_names = []
@@ -190,7 +192,7 @@ def main_relocaciones():
     # BOXPLOT
     fig, ax = plt.subplots(3)
 
-    fig.suptitle(r'SCENARIO F2 100 Replicas ($\rho$= 0.61)')
+    fig.suptitle(r'SCENARIO F18 100 Replicas ($\rho$=0.77 )')
 
     ax[0].set_title(scenario_name)
     ax[0].set_ylabel("Number of Relocations")
@@ -524,7 +526,7 @@ def main_arrivals_and_removals():
 if __name__ == '__main__':
     # main_count_fails()
     # main_ocupation_by_replica()
-     main_ocupacion()
-    # main_relocaciones()
+    # main_ocupacion()
+     main_relocaciones()
     #main_arrivals_and_removals()
     # main_decisiones()
