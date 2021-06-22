@@ -179,6 +179,7 @@ class TLSSIM():
             sim_enviroment.process(self.GEN_export_sim_status(sim_enviroment,
                                                               patio,
                                                               Box_arrival_list,
+                                                              look_ahead_time=1440/2,
                                                               export_interval=129600,
                                                               file_name='export'))
 

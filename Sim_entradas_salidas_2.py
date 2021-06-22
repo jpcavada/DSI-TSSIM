@@ -184,7 +184,7 @@ class TLSSIM():
             sim_enviroment.process(self.GEN_export_sim_status(sim_enviroment,
                                                               patio,
                                                               Box_arrival_list,
-                                                              export_interval=129600,
+                                                              export_interval=60*8+10080, #86400,
                                                               look_ahead_time=60,
                                                               file_name=JSON_EXPORT_PATH))
 
@@ -619,15 +619,16 @@ class TLSSIM():
             :param export_interval: tiempo (en ts) entre reportes 1440 = 1 dia
             :return: nada
         """
-        # Listas/Diccionarios temporales
-        positions = []
-        cont_list = {}  # box_name: [Tc, position, arrival/leave time]
-        # Reporte inicial de posiciones y costos
-        Reporte_inicial_ok = 0
-        distancias = {}
-        # INTERVALO DE REPORTE #
-        #while env.now < END_RECOUND_TIME:
-        while env.now < 1:
+        while env.now < END_RECOUND_TIME:
+            # Listas/Diccionarios temporales
+            positions = []
+            cont_list = {}  # box_name: [Tc, position, arrival/leave time]
+            # Reporte inicial de posiciones y costos
+            Reporte_inicial_ok = 0
+            distancias = {}
+            # INTERVALO DE REPORTE #
+
+        #while env.now < 1:
             yield env.timeout(export_interval)
             print("({}) IMPORTANDO ESTADO SIMULADOR".format(env.now))
             # Crear directorio de contenedores #
@@ -655,6 +656,7 @@ class TLSSIM():
                                         distancias[a] = yard.YRD_getBayDistance(bay, bay2)
 
             # Marcamos todos los que bloquean como 'mover'
+
             for key, val in cont_list.items():
                 if val[2] == 'sale':
                     bl_list = yard.YRD_isBoxBlocked(yard.YRD_findBoxByName(key))
@@ -662,7 +664,9 @@ class TLSSIM():
                         for blocking in bl_list:
                             blocking_name = blocking.BOX_getName()
                             aux_val = cont_list[blocking_name]
-                            cont_list[blocking_name] = [aux_val[0], aux_val[1], 'mover']
+                            if aux_val[2] != 'sale':
+                                cont_list[blocking_name] = [aux_val[0], aux_val[1], 'mover']
+                                #print(key, val[1], ':', blocking_name, aux_val[1])
 
             # Agregamos los contenedores nuevos
             llegan_cont = {}
@@ -676,7 +680,7 @@ class TLSSIM():
                 'contenedores': cont_list,
                 'cont_llegadas': llegan_cont
             }
-            p1 = Path(file_name + 'contenedores.json')
+            p1 = Path(file_name + str(env.now) + '_contenedores.json')
             with p1.open(mode='w+') as outfile:
                 json.dump(export_data, outfile, indent=4)
 
@@ -685,7 +689,7 @@ class TLSSIM():
                     'posiciones': positions,
                     'distancias': distancias
                 }
-                p2 = Path(file_name + 'posiciones.json')
+                p2 = Path(file_name + str(env.now) + '_posiciones.json')
                 with p2.open(mode='w+') as outfile:
                     json.dump(export_data_pos, outfile, indent=4)
                 Reporte_inicial_ok = 1
@@ -732,7 +736,7 @@ if __name__ == '__main__':
     #sim = TLSSIM()
     sim = TLSSIM(name="LACAGA",
                  outputdir="./INSTANCES/DEBUG/Salidas/",
-                 criteria="MM",
+                 criteria="RI",
                  arrivals="./INSTANCES/INSTANCES_180D_F2_100/arrivals_1.ini")
     start_time = time.time()
     sim.runSimulation(quiet=True)
