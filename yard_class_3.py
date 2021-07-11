@@ -5,6 +5,7 @@ Created on Thu Jul 11 16:02:51 2019
 @author: jpcavada
 """
 import numpy
+
 import logging
 
 logger = logging.getLogger("sim_log")
@@ -585,10 +586,9 @@ class ContainerYard:
         for blocking_bay in list_of_side_blocking_bays:
             if blocking_bay.BAY_getSize() > 1:
                 if blocking_bay.BAY_getSize() >= box_index + 1: ##Criterio para que esté blockeado lateralmente
-                    n_blocking_box = -box_index + blocking_bay.BAY_getSize()
+                    n_blocking_box = -box_bay.BAY_findBoxIndex(box.BOX_getName()) + blocking_bay.BAY_getSize()
                     for side_blocking_box in blocking_bay.BAY_getBoxList()[-n_blocking_box:]:
-                        if blocking_bay.BAY_findBoxIndex(side_blocking_box.BOX_getName()) > 0:
-                            list_of_blockers.append(side_blocking_box)
+                        list_of_blockers.append(side_blocking_box)
         return list_of_blockers[::-1]
 
     def DEP_YRD_ReshuffleIndexList(self, new_box, target_bay):
@@ -839,15 +839,14 @@ class ContainerYard:
 
 
     def YRD_evaluateBoxNewBay(self, box, accessible_bays, criteria, alldecisions=False):
-        """
+        '''
         Find witch bay is the best new position for box among the list of candidate bays accordding to criteria (RI,
         RIL, Min-Max) returns a list of all bays that are good choices.
-        :param alldecisions:
         :param box:
         :param accessible_bays:
         :param criteria:
         :return choosen_bay, all_candidate_bays:
-        """
+        '''
 
         accepted_criteria_list = ["ALL", "RI", "RI-C", "RI-S", "RIL", "RIL-C", "RIL-S", "MM", "MM-S"]
         box_get_out_date = box.BOX_getDateOut()
