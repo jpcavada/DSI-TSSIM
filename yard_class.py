@@ -9,32 +9,33 @@ import logging
 
 logger = logging.getLogger("sim_log")
 
-#logging.basicConfig(level=logging.INFO, format='%(message)s')
-#logger = logging.getLogger('sim_log')
-#print = logger.info
+# logging.basicConfig(level=logging.INFO, format='%(message)s')
+# logger = logging.getLogger('sim_log')
+# print = logger.info
 
 
 DEFAULT_BAY_SIZE = 4
 
 COST_TABLE = {
-                "I" : 0,
-                "C": 1,
-                "M": 3,
-                "L": 7
-            }
-#CLOSE_DISTANCE_COST = 1
-#MEDIUM_DISTANCE_COST = 3
-#LONG_DISTANCE_COST = 7
+    "I": 0,
+    "C": 1,
+    "M": 3,
+    "L": 7
+}
+# CLOSE_DISTANCE_COST = 1
+# MEDIUM_DISTANCE_COST = 3
+# LONG_DISTANCE_COST = 7
 
 RELOCATION_CRITERIA = "mising_relocation_criteria"
 ALL_DECISIONS = False
+
 
 class Box:
     '''
     A container (or Box) object
     '''
-    
-    def __init__ (self, name, date_in=None, date_out=None, date_service=None):
+
+    def __init__(self, name, date_in=None, date_out=None, date_service=None):
         self.name = name
         self.date_in = date_in
         self.date_out = date_out
@@ -44,16 +45,16 @@ class Box:
         self.last_bay = None
         self.removalTime = -1
         self.in_service = False
-            
+
     def BOX_getName(self):
         return self.name
-    
+
     def BOX_getDateIn(self):
         return self.date_in
-    
+
     def BOX_getDateOut(self):
         return self.date_out
-    
+
     def BOX_getDateService(self):
         return self.date_service
 
@@ -74,10 +75,12 @@ class Box:
         '''
         self.block = block
         self.bay = bay
-    
+
     def __repr__(self):
         return self.name
-        #return str([self.name, self.getDateIn(), self.position["bay"]])
+        # return str([self.name, self.getDateIn(), self.position["bay"]])
+
+
 class Bay:
     '''
     This class defines a container bay. 
@@ -89,9 +92,8 @@ class Bay:
         actual_size (int): the number of containers the bay.
         max_size (int) : the max number of containers thar can be stacked in the bay. Default 4.
     '''
-   
-  
-    def __init__ (self,name, max_size=DEFAULT_BAY_SIZE, block=None):
+
+    def __init__(self, name, max_size=DEFAULT_BAY_SIZE, block=None):
         '''
         Constructs a new bay with no containers.
             
@@ -104,12 +106,11 @@ class Bay:
         for i in range(max_size):
             self.box_list.append(None)
         self.max_size = max_size
-        self.actual_size=0
+        self.actual_size = 0
         self.name = name
         self.block = block
 
-
-    def BAY_addBox (self, box):
+    def BAY_addBox(self, box):
         '''
         Adds a container to the top of the stack.
         
@@ -121,16 +122,16 @@ class Bay:
         Returns: 
             Boolean True if the container was succesfully stacked. False if th bay was full.
         '''
-     
+
         if self.BAY_isFull():
             return False
         else:
             self.box_list[self.actual_size] = box
-            self.actual_size = self.actual_size + 1   
-            #print("Se agrego " + str(box) + " a la bahia " + str(self.BAY_getName()) + " : " + str(not(self.BAY_isFull())) + " su capacidad es " + str(self.BAY_getSize()) + "//" + str(self.BAY_getMaxSize()))
+            self.actual_size = self.actual_size + 1
+            # print("Se agrego " + str(box) + " a la bahia " + str(self.BAY_getName()) + " : " + str(not(self.BAY_isFull())) + " su capacidad es " + str(self.BAY_getSize()) + "//" + str(self.BAY_getMaxSize()))
             return True
-        
-    def BAY_removeBox (self):
+
+    def BAY_removeBox(self):
         '''Removes the top container
         
         The box position is NOT UPDATED
@@ -138,14 +139,14 @@ class Bay:
         Return:
             the top Box object from the stack. If stack is empty, it returns a False value.
         '''
-        if self.actual_size > 0 :
-            return_box = self.box_list[self.actual_size-1]
-            self.box_list[self.actual_size-1] = None
+        if self.actual_size > 0:
+            return_box = self.box_list[self.actual_size - 1]
+            self.box_list[self.actual_size - 1] = None
             self.actual_size = self.actual_size - 1
             return return_box
         else:
             return False
-        
+
     def BAY_findBoxIndex(self, box_name):
         '''
         Returns a container position index in the bay.
@@ -161,37 +162,37 @@ class Bay:
                 if self.box_list[index].BOX_getName() == box_name:
                     return index
         return -1
-    
+
     def BAY_getBox(self, box_index):
         return self.box_list[box_index]
-        
+
     def BAY_getBoxList(self):
         '''
         Returns a list of all the containers in the bay.
         '''
         ret_box_list = []
         for box in self.box_list:
-            if not(box == None):
+            if not (box == None):
                 ret_box_list.append(box)
         return ret_box_list
-    
+
     def BAY_getMaxSize(self):
         '''
         Returns the maximun number of containeres that can be stacked on this bay.
         '''
         return self.max_size
-    
+
     def BAY_getSize(self):
         '''
         Returns the number of containers stacked on this bay.
         '''
-        return self.actual_size  
-    
+        return self.actual_size
+
     def BAY_isFull(self):
         if self.BAY_getMaxSize() > self.BAY_getSize():
             return False
         return True
-    
+
     def BAY_getName(self):
         return self.name
 
@@ -219,12 +220,13 @@ class Bay:
 
             return self.BAY_getBoxList()[pos_min], aux_leaving_dates[pos_min]
 
-    def __repr__ (self):
+    def __repr__(self):
         return self.BAY_getName() + ":" + str(self.box_list)
-    
+
+
 class Block:
-    
-    def __init__(self,block_name):
+
+    def __init__(self, block_name):
         '''
         Constructs a new Block.
         
@@ -235,12 +237,12 @@ class Block:
         Attributes:
             bay_list (list): a list containing all the bays in the block. Default is empty.
         '''
-        self.name=block_name
+        self.name = block_name
         self.bay_list = []
         self.adjacency_blocking_map = {}
         self.invert_adjacency_blocking_map = {}
-    
-    def BLK_addBay (self, bay_max_size=DEFAULT_BAY_SIZE, bay_name=None):
+
+    def BLK_addBay(self, bay_max_size=DEFAULT_BAY_SIZE, bay_name=None):
         '''
         Creates a new bay in the block
         
@@ -251,7 +253,7 @@ class Block:
                 max_bay_size (int, optional) : the number of containers that can be stacked on the bay. Defualt 4.
                 bay_name (string, optional) : the name of the bay for referencias purposes. Default None.
         '''
-        newBay = Bay(max_size=bay_max_size,name=bay_name,block=self)
+        newBay = Bay(max_size=bay_max_size, name=bay_name, block=self)
 
         # Create an empty adyecency map for the bay.
 
@@ -265,13 +267,13 @@ class Block:
         Returns a list of all the bays in the block.
         '''
         return self.bay_list
-    
+
     def BLK_getBay(self, bay_index):
         '''
         Returns the Bay object by bay_index
         '''
         return self.bay_list[bay_index]
-    
+
     def BLK_getBayByName(self, bay_name):
         '''
         Returns the Bay object by bay_name. False if doesn't contain the a bay with that name
@@ -280,7 +282,7 @@ class Block:
             if bay_name == bay_iter.name:
                 return bay_iter
         return False
-    
+
     def BLK_getName(self):
         return self.name
 
@@ -310,12 +312,13 @@ class Block:
         '''
         return self.invert_adjacency_blocking_map[blocking_bay.BAY_getName()]
 
-    def __repr__ (self):
+    def __repr__(self):
         return self.name + " : " + str(self.bay_list)
 
     def BLK_export_adjacency_map(self):
         print(self.adjacency_blocking_map)
         print(self.invert_adjacency_blocking_map)
+
 
 class ContainerYard:
     '''
@@ -329,7 +332,7 @@ class ContainerYard:
         transfer_cost (list,list)
     '''
 
-    def __init__ (self, block_num, block_names=None, relocation_criteria=RELOCATION_CRITERIA):
+    def __init__(self, block_num, block_names=None, relocation_criteria=RELOCATION_CRITERIA):
         '''
         Creates a new container yard.
         
@@ -348,7 +351,7 @@ class ContainerYard:
         RELOCATION_CRITERIA = relocation_criteria
 
         for i in range(block_num):
-            if block_names==None:
+            if block_names == None:
                 self.block_list.append(Block(i))
             else:
                 self.block_list.append(Block(block_names[i]))
@@ -387,7 +390,7 @@ class ContainerYard:
         return False
 
     def __repr__(self):
-       return str(self.block_list)
+        return str(self.block_list)
 
     def YRD_moveInboundContainer(self, box, box_destiny_bay):
         '''
@@ -400,7 +403,7 @@ class ContainerYard:
         '''
         success_result = True
         movement_cost = 0
-        fail_msg= ""
+        fail_msg = ""
         if self.YRD_isBayBlocked(box_destiny_bay):
             fail_msg = "Bay is Blocked "
             success_result = False
@@ -411,12 +414,12 @@ class ContainerYard:
             success_result = box_destiny_bay.BAY_addBox(box)
             movement_cost = self.YRD_calculateMovementCost("Inbound", box_destiny_bay)
         if success_result:
-            box.BOX_setPosition(box_destiny_bay.BAY_getBlock(),box_destiny_bay)
+            box.BOX_setPosition(box_destiny_bay.BAY_getBlock(), box_destiny_bay)
         else:
-            raise Exception("Fallo movimiento: "+str(box)+" a "+str(box_destiny_bay)+" por "+fail_msg)
+            raise Exception("Fallo movimiento: " + str(box) + " a " + str(box_destiny_bay) + " por " + fail_msg)
         return success_result, movement_cost
 
-    def YRD_findBoxByName(self,box_name):
+    def YRD_findBoxByName(self, box_name):
         '''
         returs the box object in the complete yard.
 
@@ -429,10 +432,10 @@ class ContainerYard:
                 box_index = bays.BAY_findBoxIndex(box_name)
                 if box_index >= 0:
                     found_it = bays.BAY_getBox(box_index)
-                    #print("found {} in location {}".format(box_name, found_it.bay))
+                    # print("found {} in location {}".format(box_name, found_it.bay))
                     return found_it
         if found_it == False:
-            raise Exception ("Failed to found box {}". format(box_name))
+            raise Exception("Failed to found box {}".format(box_name))
         return found_it
 
     def YRD_BoxAllocation(self, box, criteria="RELOCATION_CRITERIA"):
@@ -451,11 +454,12 @@ class ContainerYard:
         accessible_bay_list = self.YRD_findAccessileBays(box)
         # 2) Call for the new position evaluation rule
         selected_bay, other_selected_bays, decision_string = self.YRD_evaluateBoxNewBay(box, accessible_bay_list,
-                                                                                        RELOCATION_CRITERIA, ALL_DECISIONS)
+                                                                                        RELOCATION_CRITERIA,
+                                                                                        ALL_DECISIONS)
 
         return selected_bay.BAY_getBlock(), selected_bay, decision_string
 
-    def DEP_YRD_findBoxNewPosition(self, box): #TODO esta función de nuevo
+    def DEP_YRD_findBoxNewPosition(self, box):  # TODO esta función de nuevo
         '''
         Function to find a new container position.
         
@@ -472,7 +476,7 @@ class ContainerYard:
                     return block_iter, bay_iter
         return None,None
         '''
-        #This Code version asigns a random position, if not available it would choose again until it finds a non full bay.
+        # This Code version asigns a random position, if not available it would choose again until it finds a non full bay.
         '''
         need_to_find_location = True
         r_block = None
@@ -488,7 +492,7 @@ class ContainerYard:
             else:
                 logger.info("Intento mover {} a {} pero es inaccesible".format(box.BOX_getName(), str(r_bay)))
         '''
-        #Here is the version of the code implementing the basic sorting and reposition algorith;
+        # Here is the version of the code implementing the basic sorting and reposition algorith;
         r_bay = None
         r_block = None
 
@@ -514,32 +518,32 @@ class ContainerYard:
                         valid_bay = False
 
                 if valid_bay:  # Si tiene contenedores veo si genera un bloqueo o no:
-                    if target_bay.BAY_getSize() == 0: #Si esta vacia, la agrego a la lista correspondiente
+                    if target_bay.BAY_getSize() == 0:  # Si esta vacia, la agrego a la lista correspondiente
                         empty_bay_list.append(target_bay)
                         empty_bay_adjacent_no.append(len(blocks.BLK_getBlockingBaysList(target_bay)))
 
                     else:
-                        top_box_date_out = target_bay.BAY_getBox(target_bay.BAY_getSize()-1).BOX_getDateOut()
+                        top_box_date_out = target_bay.BAY_getBox(target_bay.BAY_getSize() - 1).BOX_getDateOut()
                         delta_out = top_box_date_out - box.BOX_getDateOut()
-                        if 0 < delta_out: #box nuevo sale antes que el top
+                        if 0 < delta_out:  # box nuevo sale antes que el top
                             non_blocking_candidate_bay_list.append(target_bay)
                             non_blocking_candidate_bay_top_box_time_difference.append(delta_out)
-                        else: #box nuevo sale despues del top
+                        else:  # box nuevo sale despues del top
                             blocking_candidate_bay_list.append(target_bay)
                             blocking_candidate_bay_top_box_time_difference.append(delta_out)
 
-        #Eligo en prioridad bahia libre - bahia que no bloquea - bahia que bloquea
+        # Eligo en prioridad bahia libre - bahia que no bloquea - bahia que bloquea
         if empty_bay_list:
-            max_block_no = 10#0
+            max_block_no = 10  # 0
             incumbent = 0
-            for i in range(0,len(empty_bay_list)):
-                if empty_bay_adjacent_no[i] < max_block_no: #leq
+            for i in range(0, len(empty_bay_list)):
+                if empty_bay_adjacent_no[i] < max_block_no:  # leq
                     incumbent = i
                     max_block_no = empty_bay_adjacent_no[i]
             r_bay = empty_bay_list[incumbent]
             r_block = empty_bay_list[incumbent].BAY_getBlock()
 
-        elif non_blocking_candidate_bay_list : #elijo la de menor delta
+        elif non_blocking_candidate_bay_list:  # elijo la de menor delta
             min_delta = 0
             incumbent = 0
             for i in range(0, len(non_blocking_candidate_bay_list)):
@@ -576,15 +580,15 @@ class ContainerYard:
         box_block, box_bay = box.BOX_getPosition()
         list_of_box_in_bay = box_bay.BAY_getBoxList()
         box_index = box_bay.BAY_findBoxIndex(box.BOX_getName())
-        #First we check if the container is blocked from the top
-        if not(box_index == box_bay.BAY_getSize()-1):
-            for box_in_same_bay_on_top in range(box_index+1, box_bay.BAY_getSize()):
+        # First we check if the container is blocked from the top
+        if not (box_index == box_bay.BAY_getSize() - 1):
+            for box_in_same_bay_on_top in range(box_index + 1, box_bay.BAY_getSize()):
                 list_of_blockers.append(list_of_box_in_bay[box_in_same_bay_on_top])
-        #Then we check if the container is blocked from the sides, for that we check the block adyacency map.
+        # Then we check if the container is blocked from the sides, for that we check the block adyacency map.
         list_of_side_blocking_bays = box_block.BLK_getBlockingBaysList(box_bay)
         for blocking_bay in list_of_side_blocking_bays:
             if blocking_bay.BAY_getSize() > 1:
-                if blocking_bay.BAY_getSize() >= box_index + 1: ##Criterio para que esté blockeado lateralmente
+                if blocking_bay.BAY_getSize() >= box_index + 1:  ##Criterio para que esté blockeado lateralmente
                     n_blocking_box = -box_index + blocking_bay.BAY_getSize()
                     for side_blocking_box in blocking_bay.BAY_getBoxList()[-n_blocking_box:]:
                         if blocking_bay.BAY_findBoxIndex(side_blocking_box.BOX_getName()) > 0:
@@ -643,7 +647,7 @@ class ContainerYard:
     def YRD_getBayDistance(self, origin_bay, destiny_bay):
         return self.movement_distance[(origin_bay, destiny_bay)]
 
-    def YRD_calculateMovementCost (self, origin, destiny):
+    def YRD_calculateMovementCost(self, origin, destiny):
         distance = False
         if origin == "Inbound":
             distance = "I"
@@ -654,7 +658,7 @@ class ContainerYard:
 
         return COST_TABLE[distance]
 
-    def YRD_removeBox (self, box, removal_time=0):
+    def YRD_removeBox(self, box, removal_time=0):
         '''
         Removes a container from the yard (sends it to the exit gate) and updates its position The list of all removed
         boxes can be recovered using YRD_getRemovedBoxList(). Returns True if box is removed and the time the crane
@@ -663,7 +667,7 @@ class ContainerYard:
         :param box: the box to be removed
         :returns remove_succ, remove_cost:
         '''
-        #reviso si el contenedor es accesible
+        # reviso si el contenedor es accesible
         blocking_containers = self.YRD_isBoxBlocked(box)
         if blocking_containers == []:
             box_block, box_bay = box.BOX_getPosition()
@@ -675,7 +679,7 @@ class ContainerYard:
             return True, remove_cost
         return False, blocking_containers
 
-    def YRD_removeBoxFromService (self, box, removal_time=0):
+    def YRD_removeBoxFromService(self, box, removal_time=0):
         '''
         Removes a container from the service area (sends it to the exit gate) and updates its position The list of all removed
         boxes can be recovered using YRD_getRemovedBoxList(). Returns True if box is removed and the time the crane
@@ -684,7 +688,7 @@ class ContainerYard:
         :param box: the box to be removed
         :returns remove_succ, remove_cost:
         '''
-        #reviso si el contenedor esta en el area de servicio
+        # reviso si el contenedor esta en el area de servicio
         if self.YRD_isBoxInService(box):
             self.removed_box_list.append(box)
             box.BOX_setPosition("Removed", "Removed")
@@ -696,12 +700,12 @@ class ContainerYard:
 
     def YRD_addNewIntialBox(self, box, bay_name, block_name):
         block = self.YRD_getBlockByName(block_name)
-        if not(block):
+        if not (block):
             logger.info("Error: block_name {} not found".format(block_name))
             return False
 
         bay = block.BLK_getBayByName(bay_name)
-        if not(bay):
+        if not (bay):
             logger.info("Error: bay name {} not found".format(bay_name))
             return False
 
@@ -713,35 +717,43 @@ class ContainerYard:
 
         raise Exception("Error: box {} not added, please check".format(box))
 
-    def YRD_findAccessileBays(self, box, other_boxes=None):
+    def YRD_findAccessileBays(self, box, other_boxes=None, banned_bays=None):
         '''
         Finds all accessible bays for (re)locating box. This checks for non-full bays that can be accessed from a crane.
         It also discards all bays where other_boxes are located, as they may be needed to be accessed in future
         relocations. Note this method enforces the pyramid rule when neceserary. But will disable it if no other options
         are available.
 
+        :param banned_bays:
         :param box: the container box that will be allocated
         :param other_boxes: other container boxes involved in the same movement (default [])
         :return: the list of all accessible bays.
         '''
-        #Declarations and safe default value for empty other_boxes.
+        # Declarations and safe default value for empty other_boxes.
         if other_boxes is None: other_boxes = []
+        if banned_bays is None: banned_bays = []
         accessible_bay_list = []
         barely_accessible_list = []  # List of accessible bays that do not comply with piramid rule.
         rejection_list = []
         if other_boxes:
             lowest_box_name = other_boxes[numpy.argmin([i.bay.BAY_findBoxIndex(i.BOX_getName()) for i in other_boxes])]
             lowest_box_index = numpy.min([i.bay.BAY_findBoxIndex(i.BOX_getName()) for i in other_boxes])
-            #print("lowest box is {} at index {}".format(lowest_box_index, lowest_box_index))
+            # print("lowest box is {} at index {}".format(lowest_box_index, lowest_box_index))
         else:
             lowest_box_index = 99
-            #print("No other boxes")
+            # print("No other boxes")
 
         # Find all accessible bays
         for target_block in self.YRD_getBlockList():
             for target_bay in target_block.BLK_getBayList():  # Recorremos todas las bahias del patio.
                 valid_bay = True
                 rejection_reason = "{} Not Accessible because: ".format(target_bay)
+
+                # -1) If bay is banned, reject immediately
+                if target_bay in banned_bays:
+                    valid_bay = False
+                    rejection_reason = rejection_reason + "BANNED"
+
                 #   0) Check if target_bay is not full
                 if target_bay.BAY_isFull():
                     valid_bay = False
@@ -752,9 +764,11 @@ class ContainerYard:
                 boxes_blocking_target_bay = self.YRD_isBayBlocked(target_bay)
                 if boxes_blocking_target_bay:
                     if boxes_blocking_target_bay[0] == box and boxes_blocking_target_bay[-1] == box:
-                        logger.info("bay {} is not accessible, it will be available after {} is removed".format(target_bay, box))
+                        logger.info(
+                            "bay {} is not accessible, it will be available after {} is removed".format(target_bay,
+                                                                                                        box))
                     else:
-                        #print("bay {} is not accessible, is blocked by {}".format(target_bay, boxes_blocking_target_bay))
+                        # print("bay {} is not accessible, is blocked by {}".format(target_bay, boxes_blocking_target_bay))
                         valid_bay = False
                         rejection_reason = rejection_reason + "Blocked by {} ".format(boxes_blocking_target_bay)
                 #   2) Check if the target bay is not the same bay of the moving box.
@@ -765,7 +779,7 @@ class ContainerYard:
                 for b in other_boxes:
                     if b.bay == target_bay:
                         valid_bay = False
-                        #print("bay {} is the bay of {}".format(target_bay, b))
+                        # print("bay {} is the bay of {}".format(target_bay, b))
                         rejection_reason = rejection_reason + "Same bay as {} ".format(b)
                     # 3b) Check if target bay would block the access to other boxes
                     elif b.bay in target_block.BLK_getInvertedBlockingBaysList(target_bay):
@@ -778,7 +792,7 @@ class ContainerYard:
 
                 #   4)  Check if target_bay complies with PIRAMID RULE. If it does not, it will me assigned to the
                 #       Alternative accessible list
-                if target_bay.BAY_getSize() > 0: #Bays de tamaño 1 nunca bloquean.
+                if target_bay.BAY_getSize() > 0:  # Bays de tamaño 1 nunca bloquean.
                     target_bay_blocked_bays_list = target_block.BLK_getInvertedBlockingBaysList(target_bay)
                     for blocked_bay in target_bay_blocked_bays_list:
                         future_size_of_target_bay = target_bay.BAY_getSize() + 1
@@ -804,39 +818,36 @@ class ContainerYard:
         if not accessible_bay_list and barely_accessible_list:
             logger.error("No good relocaction bays, disabling pyramid rule")
             accessible_bay_list = barely_accessible_list
-        #elif not accessible_bay_list:
+        # elif not accessible_bay_list:
         #    for i in rejection_list: logger.error(i)
         #    #self.YRD_printYard(4,12)
-         #   raise Exception("No accessible bays available")
+        #   raise Exception("No accessible bays available")
         elif not accessible_bay_list and not barely_accessible_list:
             raise Exception("There are not accessible bays for (re)locating {}".format(box))
 
         return accessible_bay_list
 
-    def YRD_findRelocationPosition(self, box, other_boxes):
+    def YRD_findRelocationPosition(self, box, other_boxes, banned_bays=None):
         '''
         Returns the most convenient location for a box that is being relocated.
+        :param banned_bays:
         :param box: the container that is being relocated
         :param other_boxes: list of all the other boxes involved in the relocation.
         :return: the bay that is going to be destiny.
         '''
 
         origin_bay = box.bay
-        logger.info("FIND_RELOC_POS: buscando lugar para {} desde {}, otros {}".format(box,origin_bay, other_boxes))
+        logger.info("FIND_RELOC_POS: buscando lugar para {} desde {}, otros {}".format(box, origin_bay, other_boxes))
 
         # 1) Find all accesible Bays
-        accessible_bay_list = self.YRD_findAccessileBays(box, other_boxes)
-
-        # 2)
+        accessible_bay_list = self.YRD_findAccessileBays(box, other_boxes, banned_bays=banned_bays)
 
         # 2) Call for the new position evaluation rule
         selected_bay, other_selected_bays, decision_string = self.YRD_evaluateBoxNewBay(box, accessible_bay_list,
                                                                                         RELOCATION_CRITERIA,
                                                                                         ALL_DECISIONS)
 
-
         return selected_bay, decision_string
-
 
     def YRD_evaluateBoxNewBay(self, box, accessible_bays, criteria, alldecisions=False):
         """
@@ -857,7 +868,7 @@ class ContainerYard:
         all_selected_bays = None
         return_selected_bay = None
 
-        #list with all decisions (
+        # list with all decisions (
         if isinstance(box.bay, str):
             decisions_string = str(box) + ";" + box.bay
         else:
@@ -870,11 +881,11 @@ class ContainerYard:
         if criteria in ["ALL", "RI", "RI-C", "RI-S", "RIL", "RIL-C", "RIL-S", "MM", "MM-S"]:
 
             #   Calculate the reshuffle index (number of blocked containers) for each accessible bay
-            rs_list = [] #a list for all the reshuffle index, populated in the same order that accessible bays.
-            rs_earliest_leaving_time = [] #list with the earliest leave time for each candidate bays
+            rs_list = []  # a list for all the reshuffle index, populated in the same order that accessible bays.
+            rs_earliest_leaving_time = []  # list with the earliest leave time for each candidate bays
 
             for bay_s in accessible_bays:
-                boxes_blocked_by_box_if_moved_to_bay_s = [] #Initialize B_{cs}^{-1}=\phi
+                boxes_blocked_by_box_if_moved_to_bay_s = []  # Initialize B_{cs}^{-1}=\phi
                 for boxes in bay_s.BAY_getBoxList():
                     if boxes.BOX_getDateOut() <= box_get_out_date:
                         boxes_blocked_by_box_if_moved_to_bay_s.append(boxes)
@@ -882,19 +893,21 @@ class ContainerYard:
                     if bay_blocked_by_bay_s.BAY_getSize() > 1:
                         for box_in_blocked_bay in bay_blocked_by_bay_s.BAY_getBoxList():
                             if box_in_blocked_bay.BOX_getDateOut() <= box_get_out_date:
-                                if bay_s.BAY_getSize() >= bay_blocked_by_bay_s.BAY_findBoxIndex(box_in_blocked_bay.BOX_getName()):
+                                if bay_s.BAY_getSize() >= bay_blocked_by_bay_s.BAY_findBoxIndex(
+                                        box_in_blocked_bay.BOX_getName()):
                                     boxes_blocked_by_box_if_moved_to_bay_s.append(box_in_blocked_bay)
                 rs_list.append(len(boxes_blocked_by_box_if_moved_to_bay_s))
-                #print(boxes_blocked_by_box_if_moved_to_bay_s)
+                # print(boxes_blocked_by_box_if_moved_to_bay_s)
                 leave_time_aux = []
                 for i in boxes_blocked_by_box_if_moved_to_bay_s:
                     leave_time_aux.append(i.BOX_getDateOut())
-                #print(leave_time_aux)
+                # print(leave_time_aux)
                 if leave_time_aux:
-                    rs_earliest_leaving_time.append([boxes_blocked_by_box_if_moved_to_bay_s[numpy.argmin(leave_time_aux)],
-                                                    numpy.min(leave_time_aux)])
+                    rs_earliest_leaving_time.append(
+                        [boxes_blocked_by_box_if_moved_to_bay_s[numpy.argmin(leave_time_aux)],
+                         numpy.min(leave_time_aux)])
                 else:
-                    rs_earliest_leaving_time.append([0,0])
+                    rs_earliest_leaving_time.append([0, 0])
 
             '''
             ### DEBUG RELOCATION 1###
@@ -906,10 +919,10 @@ class ContainerYard:
             if criteria in ["RI", "RIL", "MM", "ALL"] or alldecisions is True:
                 #   First create a candidate list with all stacks with the minimun number of future relocarions.
                 min_rs = numpy.min(rs_list)
-                candidate_list = []     #Lista de todos las BAY con menos bloqueos futuros
-                candidate_first_leaving_time_list = []  #Hora de salida de la primera box en salir de la bays
-                candidate_first_leaving_box_list = []   #Primera BOX en salir.
-                candidate_list_stack_size = []      #Stack size of each candidate bay
+                candidate_list = []  # Lista de todos las BAY con menos bloqueos futuros
+                candidate_first_leaving_time_list = []  # Hora de salida de la primera box en salir de la bays
+                candidate_first_leaving_box_list = []  # Primera BOX en salir.
+                candidate_list_stack_size = []  # Stack size of each candidate bay
                 for it in range(len(accessible_bays)):
                     if rs_list[it] == min_rs:
                         candidate_list.append(accessible_bays[it])
@@ -926,7 +939,7 @@ class ContainerYard:
                 ### END DEBUG RELOCATION 2 ####
                 '''
                 if criteria in ["RI"] or alldecisions is True:
-                    #Buscamos todas las de stack size
+                    # Buscamos todas las de stack size
                     min_stack_size = numpy.min(candidate_list_stack_size)
                     min_stack_candidate_list = []
                     for j in candidate_list:
@@ -936,17 +949,19 @@ class ContainerYard:
                     selected_bay = min_stack_candidate_list[0]
                     all_selected_bays = min_stack_candidate_list
 
-                    logger.info("RI choosed {} [{}], Other options are {}".format(selected_bay, min_rs, all_selected_bays))
+                    logger.info(
+                        "RI choosed {} [{}], Other options are {}".format(selected_bay, min_rs, all_selected_bays))
                     decisions_string = decisions_string + ";" + "RI:" + str(selected_bay.BAY_getName())
                     if criteria in ["RI"]:
                         return_selected_bay = selected_bay
 
                 if criteria in ["RIL"] or alldecisions is True:
-                    #Elegimos la que tiene el mayor tiempo de salida
-                    selected_bay= candidate_list[numpy.argmax(candidate_first_leaving_time_list)]
+                    # Elegimos la que tiene el mayor tiempo de salida
+                    selected_bay = candidate_list[numpy.argmax(candidate_first_leaving_time_list)]
                     all_selected_bays = candidate_list
 
-                    logger.info("RIL would choose {}, [{}], Other options are {}".format(selected_bay, min_rs, all_selected_bays))
+                    logger.info("RIL would choose {}, [{}], Other options are {}".format(selected_bay, min_rs,
+                                                                                         all_selected_bays))
                     decisions_string = decisions_string + ";" + "RIL:" + str(selected_bay.BAY_getName())
                     if criteria in ["RIL"]:
                         return_selected_bay = selected_bay
@@ -957,40 +972,44 @@ class ContainerYard:
                     for it in range(len(accessible_bays)):
                         earliest_box, earliest_time = accessible_bays[it].Bay_getFirstRetrieval()
                         if rs_list[it] == 0:
-                           bays_with_no_relocation_list_leavetime.append([earliest_time, accessible_bays[it], earliest_box])
+                            bays_with_no_relocation_list_leavetime.append(
+                                [earliest_time, accessible_bays[it], earliest_box])
                         else:
-                            bays_with_relocations_list_leavetime.append([earliest_time, accessible_bays[it], earliest_box])
+                            bays_with_relocations_list_leavetime.append(
+                                [earliest_time, accessible_bays[it], earliest_box])
 
                     # Si existen bay sin relocacioes, entonces tomamos la que salga antes:
 
                     if bays_with_no_relocation_list_leavetime:
                         #### DEBUG MM ###
-                        #print("Bays with no relocation")
-                        #for a in bays_with_no_relocation_list_leavetime:
+                        # print("Bays with no relocation")
+                        # for a in bays_with_no_relocation_list_leavetime:
                         #    print(a)
 
-                        selected_bay = bays_with_no_relocation_list_leavetime[numpy.argmin([i[0] for i in bays_with_no_relocation_list_leavetime])][1]
+                        selected_bay = bays_with_no_relocation_list_leavetime[
+                            numpy.argmin([i[0] for i in bays_with_no_relocation_list_leavetime])][1]
                         all_selected_bays = bays_with_no_relocation_list_leavetime
                         logger.info("MM would choose {} (No future relocations)".format(selected_bay))
 
                     elif bays_with_relocations_list_leavetime:
-                        #print("No bays without relocations available")
-                        #for a in bays_with_relocations_list_leavetime:
+                        # print("No bays without relocations available")
+                        # for a in bays_with_relocations_list_leavetime:
                         #    print(a)
-                        selected_bay = bays_with_relocations_list_leavetime[numpy.argmax([i[0] for i in bays_with_relocations_list_leavetime])][1]
+                        selected_bay = bays_with_relocations_list_leavetime[
+                            numpy.argmax([i[0] for i in bays_with_relocations_list_leavetime])][1]
                         all_selected_bays = bays_with_relocations_list_leavetime
                         logger.info("MM would choose {} (With future relocations)".format(selected_bay))
                     decisions_string = decisions_string + ";" + "MM:" + str(selected_bay.BAY_getName())
                     if criteria in ["MM"]:
                         return_selected_bay = selected_bay
 
-
-            #Criterias with additive movement cost:
+            # Criterias with additive movement cost:
             if criteria in ["RI-C", "RIL-C"] or alldecisions is True:
                 # First we create a cost candidate list for each accesible bay. cost = movement + relocations
                 additive_cost_list = []
                 for it in range(len(accessible_bays)):
-                    additive_cost_list.append(rs_list[it] + self.YRD_calculateMovementCost(box.bay, accessible_bays[it]))
+                    additive_cost_list.append(
+                        rs_list[it] + self.YRD_calculateMovementCost(box.bay, accessible_bays[it]))
                 # Create a candidate list with only the minumin cost options
                 min_cost_rs = numpy.min(additive_cost_list)
                 cost_candidate_list = []  # Lista de todos las BAY con menor costo + relocaciones
@@ -1015,10 +1034,10 @@ class ContainerYard:
                     all_selected_bays = min_stack_candidate_list
 
                     logger.info("RI-C choosed {} [{}-{}], Other options are {}".format(selected_bay,
-                                                                                        self.YRD_calculateMovementCost(
-                                                                                            box.bay, selected_bay),
-                                                                                        min_cost_rs,
-                                                                                        all_selected_bays))
+                                                                                       self.YRD_calculateMovementCost(
+                                                                                           box.bay, selected_bay),
+                                                                                       min_cost_rs,
+                                                                                       all_selected_bays))
                     decisions_string = decisions_string + ";" + "RIC:" + str(selected_bay.BAY_getName())
                     if criteria in ["RI-C"]:
                         return_selected_bay = selected_bay
@@ -1028,8 +1047,12 @@ class ContainerYard:
                     selected_bay = cost_candidate_list[numpy.argmax(cost_candidate_first_leaving_time_list)]
                     all_selected_bays = cost_candidate_list
 
-                    logger.info("RIL-C would choose {}, [{}-{}], Other options are {}".format(selected_bay, self.YRD_calculateMovementCost(box.bay, selected_bay), min_cost_rs,
-                                                                                         all_selected_bays))
+                    logger.info("RIL-C would choose {}, [{}-{}], Other options are {}".format(selected_bay,
+                                                                                              self.YRD_calculateMovementCost(
+                                                                                                  box.bay,
+                                                                                                  selected_bay),
+                                                                                              min_cost_rs,
+                                                                                              all_selected_bays))
                     decisions_string = decisions_string + ";" + "RIL-C:" + str(selected_bay.BAY_getName())
                     if criteria in ["RIL-C"]:
                         return_selected_bay = selected_bay
@@ -1047,8 +1070,8 @@ class ContainerYard:
                         if i[0] == acc_bay_cost:
                             i[1].append(it)
 
-                #print("For {} in {}".format(box, box.bay))
-                #for i in staggered_accessible_bay_index_list:
+                # print("For {} in {}".format(box, box.bay))
+                # for i in staggered_accessible_bay_index_list:
                 #    print(i[0], [accessible_bays[j] for j in i[1]])
 
                 # create a candidate list using the lowest available tier only
@@ -1057,11 +1080,11 @@ class ContainerYard:
                     if len(i[1]) != 0:
                         staggered_lower_tier_accessible_index_list = i[1]
                         break
-                #print([accessible_bays[j] for j in staggered_lower_tier_accessible_index_list])
+                # print([accessible_bays[j] for j in staggered_lower_tier_accessible_index_list])
 
                 #   Now create a candidate list with all stacks with the minimun number of future relocarions.
                 staggered_min_rs = numpy.min([rs_list[j] for j in staggered_lower_tier_accessible_index_list])
-                #print("Lowest rs is {}".format(staggered_min_rs))
+                # print("Lowest rs is {}".format(staggered_min_rs))
 
                 staggered_candidate_list = []  # Lista de todos las BAY con menos bloqueos futuros en el menor tier
                 staggered_candidate_first_leaving_time_list = []  # Hora de salida de la primera box en salir de la bays
@@ -1085,9 +1108,9 @@ class ContainerYard:
                     all_selected_bays = min_stack_candidate_list
 
                     logger.info("RI-S choosed {} [{}], Other options are {}".format(selected_bay,
-                                                                                       self.YRD_calculateMovementCost(
-                                                                                           box.bay, selected_bay),
-                                                                                       all_selected_bays))
+                                                                                    self.YRD_calculateMovementCost(
+                                                                                        box.bay, selected_bay),
+                                                                                    all_selected_bays))
                     decisions_string = decisions_string + ";" + "RI-S:" + str(selected_bay.BAY_getName())
                     if criteria in ["RI-S"]:
                         return_selected_bay = selected_bay
@@ -1097,8 +1120,10 @@ class ContainerYard:
                     selected_bay = staggered_candidate_list[numpy.argmax(staggered_candidate_first_leaving_time_list)]
                     all_selected_bays = staggered_candidate_list
 
-                    logger.info("RIL-S would choose {}, [{}], Other options are {}".format(selected_bay, self.YRD_calculateMovementCost(box.bay, selected_bay),
-                                                                                         all_selected_bays))
+                    logger.info("RIL-S would choose {}, [{}], Other options are {}".format(selected_bay,
+                                                                                           self.YRD_calculateMovementCost(
+                                                                                               box.bay, selected_bay),
+                                                                                           all_selected_bays))
                     decisions_string = decisions_string + ";" + "RIL-S:" + str(selected_bay.BAY_getName())
                     if criteria in ["RIL-S"]:
                         return_selected_bay = selected_bay
@@ -1119,8 +1144,8 @@ class ContainerYard:
 
                     if bays_with_no_relocation_list_leavetime:
                         #### DEBUG MM ###
-                        #print("Bays with no relocation")
-                        #for a in bays_with_no_relocation_list_leavetime:
+                        # print("Bays with no relocation")
+                        # for a in bays_with_no_relocation_list_leavetime:
                         #    print(a)
 
                         selected_bay = bays_with_no_relocation_list_leavetime[
@@ -1140,8 +1165,8 @@ class ContainerYard:
                     if criteria in ["MM-S"]:
                         return_selected_bay = selected_bay
 
-        #RETURN choosen bay and all other candidate bays.
-        decisions_string = decisions_string + ";" + "F:" + str(criteria) +":" + str(return_selected_bay)
+        # RETURN choosen bay and all other candidate bays.
+        decisions_string = decisions_string + ";" + "F:" + str(criteria) + ":" + str(return_selected_bay)
         logger.info("Choosed BAY {} using {}".format(selected_bay, criteria))
         return return_selected_bay, all_selected_bays, decisions_string
 
@@ -1151,17 +1176,19 @@ class ContainerYard:
         boxes_blocking_target_bay = self.YRD_isBayBlocked(destiny_bay)
         if self.YRD_isBayBlocked(destiny_bay):
             if not (boxes_blocking_target_bay[0] == box and boxes_blocking_target_bay[-1] == box):
-            #warnings.warn("WARNING: Relocating BOX {}, from {} to a blocked Bay {}. It may be possible that the bay was cleared when BOX was moved".format(box, box.bay, destiny_bay))
+                # warnings.warn("WARNING: Relocating BOX {}, from {} to a blocked Bay {}. It may be possible that the bay was cleared when BOX was moved".format(box, box.bay, destiny_bay))
                 raise Exception("Relocating BOX {}, to a blocked Bay {} Check code!!".format(box, destiny_bay))
         if destiny_bay.BAY_isFull():
             raise Exception("Relocating BOX {}, to a FULL Bay {} Check code!!".format(box, destiny_bay))
         origin_bay = box.bay
         remove_ok = origin_bay.BAY_removeBox()
-        if not(remove_ok):
-            raise Exception("BOX {}, could not be removed from bay {} for relocation, Check code!!".format(box, box.bay))
+        if not (remove_ok):
+            raise Exception(
+                "BOX {}, could not be removed from bay {} for relocation, Check code!!".format(box, box.bay))
         reloc_succ = destiny_bay.BAY_addBox(box)
-        if not(reloc_succ):
-            raise Exception("BOX {}, could not be added to bay {} for relocation, Check code!!".format(box, destiny_bay))
+        if not (reloc_succ):
+            raise Exception(
+                "BOX {}, could not be added to bay {} for relocation, Check code!!".format(box, destiny_bay))
         reloc_cost = self.YRD_calculateMovementCost(origin_bay, destiny_bay)
         box.BOX_setPosition(destiny_bay.BAY_getBlock(), destiny_bay)
         return reloc_succ, reloc_cost
@@ -1178,7 +1205,7 @@ class ContainerYard:
             for i in range(long_number):
                 aux_string = ""
                 for j in range(wide_number):
-                    aux_string = aux_string + str(block.BLK_getBay(i+long_number*j))
+                    aux_string = aux_string + str(block.BLK_getBay(i + long_number * j))
                 logger.info(aux_string)
 
     def YRD_exportYardSnapShot(self, wide_number, long_number):
@@ -1195,9 +1222,9 @@ class ContainerYard:
             for i in range(long_number):
                 aux_string = ""
                 for j in range(wide_number):
-                    aux_string = aux_string + str(block.BLK_getBay(i+long_number*j))
+                    aux_string = aux_string + str(block.BLK_getBay(i + long_number * j))
                 snapshot_string = snapshot_string + aux_string + "\n"
-        #print(snapshot_string)
+        # print(snapshot_string)
         return snapshot_string
 
     ##### SERVICIOS: LOGICAL ##############
@@ -1210,7 +1237,7 @@ class ContainerYard:
         self.service_list_complete.append(Servicio)
         return Servicio.SRV_getLenght()
 
-#### SERVICIOS: FISICAL ##########
+    #### SERVICIOS: FISICAL ##########
 
     def YRD_moveBoxToService(self, box):
         '''
@@ -1239,14 +1266,16 @@ class ContainerYard:
         :return: True if box is in service
         '''
         if box.in_service:
-                logger.info("{} is in service area".format(box))
-                return True
+            logger.info("{} is in service area".format(box))
+            return True
         return False
+
 
 class Service:
     '''
     A service is a process that need to be performed to the container.
     '''
+
     def __init__(self, containers_list, start_time, due_time, service_lenght):
         '''
         Constructor of a service object.
@@ -1258,10 +1287,9 @@ class Service:
         '''
         self.container_list = containers_list
         self.start_time = start_time
-        self.due_time=due_time
+        self.due_time = due_time
         self.service_lenght = service_lenght
         self.service_status = -1
-
 
     def SRV_getDueTime(self):
         return self.due_time
@@ -1281,26 +1309,7 @@ class Service:
             return "Finished"
 
     def SRV_setStatus(self, new_status):
-        valid_status_list = [0,1,2]
+        valid_status_list = [0, 1, 2]
         if new_status not in valid_status_list:
             raise Exception("Status {} not valid, must be {}".format(new_status, valid_status_list))
         self.service_status = new_status
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   

@@ -24,7 +24,7 @@ import Controller as control
 INSTANCE_NAME = "NONAME"
 START_SIM_CLOCK = 0
 # FINAL_SIM_CLOCK = 259200
-FINAL_SIM_CLOCK = utilidades.toSimTime(90, 24, 0)
+FINAL_SIM_CLOCK = utilidades.toSimTime(67, 24, 0)
 START_RECOUNT_TIME = 43200
 
 END_RECOUND_TIME = 259200
@@ -101,6 +101,8 @@ class TLSSIM:
         self.logger.setLevel(logging.INFO)
         file_handler = logging.FileHandler(OUTPUT_FILES_FOLDER + INSTANCE_NAME + '.log', 'a')
         file_handler.setLevel(logging.ERROR)
+        #file_handler.setLevel(logging.INFO)
+
         self.logger.addHandler(file_handler)
 
         self.Box_arrival_list = None
@@ -212,10 +214,10 @@ class TLSSIM:
 
             self.controller = control.Controller(patio)
             sim_enviroment.process(self.GEN_start_Controller(self.controller,
-                                                             sim_enviroment,
-                                                             patio,
-                                                             self.Box_arrival_list,
-                                                             utilidades.toSimTime(60, 9, 0)),
+                                                              sim_enviroment,
+                                                              patio,
+                                                              self.Box_arrival_list,
+                                                              utilidades.toSimTime(60, 9, 0)),
                                    )
             """
             sim_enviroment.process(self.GEN_export_sim_status(sim_enviroment,
@@ -406,24 +408,31 @@ class TLSSIM:
             self.logger.info(
                 "[" + str(env.now) + "] Llego " + str(arriving_box.BOX_getName()) + " y esta esperando grúa")
             arriving_box.bay = "Inbound"
-            # Controller
-            if self.controller.status == 1:
-                posicion_destino = self.controller.getArrivalPosition(arriving_box.BOX_getName(),
-                                                                      env.now, self.Box_arrival_list)
-                print("poner {} en {}".format(arriving_box.BOX_getName(), posicion_destino))
 
             with sim_res_Crane.request() as i_have_a_crane:
                 yield i_have_a_crane
                 data_crane_time = env.now
 
                 # Controller
-                if self.controller.status == 1 and posicion_destino != 0:
-                    destiny_bay = yard.YRD_getBayByName(posicion_destino.split('-')[0])
-                    decision_string = "C {}".format(destiny_bay)
-                    print("Controller pone a {} en {}".format(arriving_box.BOX_getName(), destiny_bay))
+                decision_string = ''
+                # Controller
+                if self.controller.status == 1:
+                    posicion_destino = self.controller.getArrivalPosition(arriving_box.BOX_getName(),
+                                                                          env.now, self.Box_arrival_list)
+                    print("poner {} en {}".format(arriving_box.BOX_getName(), posicion_destino))
 
-                else:  # Si controller falla toma el control
+                    if posicion_destino != 0:
+                        destiny_bay = yard.YRD_getBayByName(posicion_destino.split('-')[0])
+                        decision_string = "C {}".format(destiny_bay)
+                        print("Controller pone a {} en {}".format(arriving_box.BOX_getName(), destiny_bay))
+
+                    else:
+                        destiny_block, destiny_bay, decision_string = yard.YRD_BoxAllocation(arriving_box)
+                        print("Controller no encontro, SIM pone a {} en {}".format(arriving_box.BOX_getName(), destiny_bay))
+
+                else:  # Si controller no esta activo toma el control
                     destiny_block, destiny_bay, decision_string = yard.YRD_BoxAllocation(arriving_box)
+
                 self.DATA_DECISION.append((env.now, decision_string))
                 move_succ, move_cost = yard.YRD_moveInboundContainer(arriving_box, destiny_bay)
                 if move_succ:
@@ -473,12 +482,6 @@ class TLSSIM:
             else:
                 self.logger.info("[{}] Hora de retirar {}, esperando grua".format(env.now, leaving_box))
 
-                # Controller
-                if self.controller.status == 1:
-                    blockers_moves = self.controller.getRemovalMoves(leaving_box.BOX_getName(),
-                                                                     env.now, self.Box_arrival_list)
-                    print("Para {} se identificaron los blockeos {}".format(leaving_box.BOX_getName(), blockers_moves))
-
                 # Espero a que llegue una grúa
                 with sim_res_Crane.request() as i_have_a_crane:
                     yield i_have_a_crane
@@ -486,31 +489,52 @@ class TLSSIM:
                     self.logger.info("[{}] Grua llega para retirar {}".format(env.now, leaving_box))
 
                     # Controller activo y con relocaciones:
-                    if self.controller.status == 1 and blockers_moves:
-                        self.logger.info("[{}] RELOC(C): reloca a {}".format(env.now,
-                                                                             [b[0] for b in blockers_moves]))
+                    # Controller
+                    if self.controller.status == 1:
+                        blockers_moves = self.controller.getRemovalMoves(leaving_box.BOX_getName(),
+                                                                         env.now, self.Box_arrival_list)
+                        print("Para {} se identificaron los blockeos {}".format(leaving_box.BOX_getName(),
+                                                                                blockers_moves))
                         data_removal_relocatins = len(blockers_moves)
-                        for bm in blockers_moves:
-                            blocker = yard.YRD_findBoxByName(bm[0])
-                            destiny_bay = yard.YRD_getBayByName(bm[1].split('-')[0])
-                            decision_string = "C {}".format(destiny_bay)
+                        if blockers_moves:
+                            self.logger.info("[{}] RELOC(C): reloca a {}".format(env.now,
+                                                                                 [b[0] for b in blockers_moves]))
 
-                            # Llamamos una grua
-                            reloc_succ, reloc_cost = yard.YRD_relocateBox(blocker, destiny_bay)
-                            if reloc_succ:
-                                data_reloc_call = env.now
-                                yield env.timeout(reloc_cost)
-                                self.logger.info(
-                                    "[{}] RELOC(C): se recoloco {} a {}, costo {}".format(env.now, blocker,
-                                                                                          destiny_bay, reloc_cost))
-                                data_reloc_execute = env.now
-                                self.DATA_BOX_RELOCATIONS.append((blocker.BOX_getName(), data_reloc_call,
-                                                                  data_reloc_execute, leaving_box.BOX_getName(),
-                                                                  reloc_cost))
-                                self.DATA_DECISION.append((env.now, decision_string))
-                            else:
-                                raise Exception("[{}] (C)Relocation of {} failed".format(env.now, blocker))
+                            for bm in blockers_moves:
+                                blocker = yard.YRD_findBoxByName(bm[0])
 
+                                # Si el controllor determina exilio
+                                if bm[1] == 'EX':
+                                    banned_bays = set()
+                                    [banned_bays.add(b) for b in self.controller.all_bays]
+                                    for target_block in yard.YRD_getBlockList():
+                                        for target_bay in target_block.BLK_getBayList():
+                                            if yard.YRD_getBayDistance(blocker.bay, target_bay) != "L":
+                                                banned_bays.add(target_bay)
+                                    destiny_bay, decision_string = yard.YRD_findRelocationPosition(blocker,
+                                                                                                   [],
+                                                                                                   list(banned_bays))
+                                else:
+                                    destiny_bay = yard.YRD_getBayByName(bm[1].split('-')[0])
+                                    decision_string = "C {}".format(destiny_bay)
+
+                                # Llamamos una grua
+                                reloc_succ, reloc_cost = yard.YRD_relocateBox(blocker, destiny_bay)
+                                if reloc_succ:
+                                    data_reloc_call = env.now
+                                    yield env.timeout(reloc_cost)
+                                    self.logger.info(
+                                        "[{}] RELOC(C): se recoloco {} a {}, costo {}".format(env.now, blocker,
+                                                                                              destiny_bay, reloc_cost))
+                                    data_reloc_execute = env.now
+                                    self.DATA_BOX_RELOCATIONS.append((blocker.BOX_getName(), data_reloc_call,
+                                                                      data_reloc_execute, leaving_box.BOX_getName(),
+                                                                      reloc_cost))
+                                    self.DATA_DECISION.append((env.now, decision_string))
+                                else:
+                                    raise Exception("[{}] (C)Relocation of {} failed".format(env.now, blocker))
+
+                    # Si el controller no esta activo
                     else:
                         # Cuando se debe retirar, se revisa si esta bloqueado
                         blockers_list = yard.YRD_isBoxBlocked(leaving_box)
@@ -557,20 +581,20 @@ class TLSSIM:
                     # Cuando este accesible retiro el contenedor
                     remove_succ, remove_cost = yard.YRD_removeBox(leaving_box, env.now)
 
-                if remove_succ:
-                    yield env.timeout(remove_cost)
-                    self.logger.info(
-                        "[{}] Retirando {} con la grua, costo {}".format(env.now, leaving_box, remove_cost))
-                    data_removal_execute = env.now
-                    self.DATA_BOX_REMOVALS.append((str(leaving_box.BOX_getName()), str(data_removal_call_time),
-                                                   str(data_removal_crane_time), str(data_removal_execute),
-                                                   str(data_removal_relocatins)))
-                    # global self.COUNT_NUMBER_OF_BOXES
-                    self.COUNT_NUMBER_OF_BOXES = self.COUNT_NUMBER_OF_BOXES - 1
-                    self.DATA_NUMBER_OF_BOXES.append((data_removal_execute, self.COUNT_NUMBER_OF_BOXES))
-                else:
-                    yard.YRD_printYard(4, 12)
-                    raise Exception("Box {} failed to be removed, blocked by {}".format(leaving_box, remove_cost))
+                    if remove_succ:
+                        yield env.timeout(remove_cost)
+                        self.logger.info(
+                            "[{}] Retirando {} con la grua, costo {}".format(env.now, leaving_box, remove_cost))
+                        data_removal_execute = env.now
+                        self.DATA_BOX_REMOVALS.append((str(leaving_box.BOX_getName()), str(data_removal_call_time),
+                                                       str(data_removal_crane_time), str(data_removal_execute),
+                                                       str(data_removal_relocatins)))
+                        # global self.COUNT_NUMBER_OF_BOXES
+                        self.COUNT_NUMBER_OF_BOXES = self.COUNT_NUMBER_OF_BOXES - 1
+                        self.DATA_NUMBER_OF_BOXES.append((data_removal_execute, self.COUNT_NUMBER_OF_BOXES))
+                    else:
+                        yard.YRD_printYard(4, 12)
+                        raise Exception("Box {} failed to be removed, blocked by {}".format(leaving_box, remove_cost))
 
     def GEN_moveToService(self, env, yard, sim_res_Crane, box):
         """
@@ -796,10 +820,10 @@ if __name__ == '__main__':
     sim = TLSSIM(name="SIM3",
                  outputdir="./INSTANCES/DEBUG/Salidas/",
                  criteria="MM",
-                 arrivals="./INSTANCES/INSTANCES_180D_F2_100/arrivals_1.ini")
+                 arrivals="./INSTANCES/INSTANCES_180D_F2_100/arrivals_13.ini")
     start_time = time.time()
     # sim.runSimulation(quiet=True, tInicial=0, tFinal=START_RECOUNT_TIME, export="p.pickle")
-    sim.runSimulation(quiet=True, tInicial=0, tFinal=FINAL_SIM_CLOCK, export="p.pickle")
+    sim.runSimulation(quiet=False, tInicial=0, tFinal=FINAL_SIM_CLOCK, export="p.pickle")
 
     # sim.runSimulation(quiet=False, tInicial=START_RECOUNT_TIME, tFinal=FINAL_SIM_CLOCK, export="p.pickle")
     end_time = time.time()

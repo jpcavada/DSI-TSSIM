@@ -3,6 +3,8 @@ import export_JSON_data
 import subprocess
 import os
 
+import utilidades
+
 
 class Controller:
 
@@ -12,16 +14,17 @@ class Controller:
         self.movements = []
         self.model_life = 0
         self.needUpdate = True
-        self.modelPath = pl.Path("optimiza/modelo.py")
-        self.tempPath = pl.Path("optimiza/temp")
+        self.modelPath = pl.Path("optimiza", "modelo.py")
+        self.tempPath = pl.Path("optimiza", "temp")
         self.look_ahead_time = 120
         self.name = 'test'
+
+        self.all_bays = set()  # Set de todas ls bays que reciben o sacan un cont.
 
     def CheckModelStatus(self):
         print("HP : {}/{}".format(len(self.movements), self.model_life))
         if not self.needUpdate:
-            if (len(self.movements) / self.model_life) < 0.5:
-                print("modelo desactualizado")
+            if (len(self.movements) / self.model_life) < 0.4:
                 self.needUpdate = True
         else:
             self.needUpdate = False
@@ -35,9 +38,7 @@ class Controller:
         """
         self.name = str(simtime)
         self.movements = []
-        status = 0
-        print("ASSUMMING DIRECT CONTROL")
-        print(self.tempPath)
+        self.all_bays.clear()
         # Delete all temporary files before proceeding
         for child in self.tempPath.iterdir():
             if child.is_file():
@@ -59,21 +60,20 @@ class Controller:
         # print("out", str(self.tempPath))
 
         # Run optimization modelo
-        command = "python3 /optimiza/modelo.py"
-        # print(command)
+        print('[{}] Corriendo Modelo'.format(utilidades.toRealTime(simtime)))
         pl.Path.mkdir(pl.Path.joinpath(self.tempPath, 'model_logs'), exist_ok=True)
         model_log = open(pl.Path.joinpath(self.tempPath, 'model_logs', self.name + '.log'), 'w')
-        resumen = subprocess.run(["python3",
+        resumen = subprocess.run(["python",
                                   str(self.modelPath),
                                   str(contenedores_file),
                                   str(posiciones_file),
                                   "-n", str(self.name),
                                   "-o", str(self.tempPath) + os.path.sep,
-                                  "-s", "Resumen"],
+                                  "-s", "Resumen",
+                                  "-e"],
                                  stdout=model_log, stderr=model_log)
         # ["python3", "modelo.py", contenedores_file, posiciones_file, "-n "+i, "-o="+out_PATH, "-s=RESUMEN"]
 
-        print(resumen)
 
         with open(pl.Path.joinpath(self.tempPath, 'status')) as sf:
             for line in sf.readlines():
@@ -106,6 +106,16 @@ class Controller:
                             move['relocs'] = relocaciones
                             relocaciones = []
                             self.movements.append(move)
+                        # Agregar la bay de origen y destino a la lista de involucradas
+
+                        for b in [move['orig'], move['dest']]:
+                            bay = self.yard.YRD_getBayByName(b.split('-')[0])
+                            if bay:
+                                self.all_bays.add(bay)
+                                block = bay.block
+                                for bb in block.BLK_getBlockingBaysList(bay):
+                                    self.all_bays.add(bb)
+
 
             self.model_life = len(self.movements)
         else:
@@ -144,7 +154,10 @@ class Controller:
         nextMove = self.getNextMove(box_name, "W")
         if nextMove is not None:
             for bm in nextMove['relocs']:
-                blocker_moves.append([bm['cont'], bm['dest']])
+                if bm['tipo'] == "EX":
+                    blocker_moves.append([bm['cont'], 'EX'])
+                else:
+                    blocker_moves.append([bm['cont'], bm['dest']])
             print('{} Removal encontrado, con {}'.format(box_name, blocker_moves))
             return blocker_moves
         else:
@@ -153,7 +166,10 @@ class Controller:
             nextMove = self.getNextMove(box_name, "W")
             if nextMove is not None:
                 for bm in nextMove['relocs']:
-                    blocker_moves.append([bm['cont'], bm['dest']])
+                    if bm['tipo'] == "EX":
+                        blocker_moves.append([bm['cont'], 'EX'])
+                    else:
+                        blocker_moves.append([bm['cont'], bm['dest']])
                 print('{} Removal encontrado, con {}'.format(box_name, blocker_moves))
                 return blocker_moves
             else:

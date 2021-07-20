@@ -104,7 +104,7 @@ class TLSMODEL:
     w = None
     y = None
     z = None
-    ex = None
+    x_ex = None
 
     # Auxliary dictionaries
     # varName_KeySets_RetSet
@@ -124,7 +124,8 @@ class TLSMODEL:
     xm_je_ic = {}
     xl_je_ic = {}
     v_je_c = {}
-
+    xe_ie_c = {}
+    
     c10set = set()
 
     def __init__(self, files, name='', echo=True):
@@ -154,6 +155,8 @@ class TLSMODEL:
         self.x_m = self.SetVar('XM', self.t_x_medium, obj=self.cost_x_m, type=GRB.INTEGER, echo=self.echo)
         self.x_l = self.SetVar('XL', self.t_x_long, obj=self.cost_x_l, type=GRB.INTEGER, echo=self.echo)
 
+        self.x_ex = self.SetVar('XE', self.t_exile, obj=BASE_COST_EXILE, type=GRB.INTEGER, echo=self.echo)
+
         self.AuxDicts()
 
         altura = {}
@@ -164,7 +167,7 @@ class TLSMODEL:
         self.w = self.SetVar('W', self.t_w_salen, obj=0, type=GRB.INTEGER, echo=self.echo)
         self.y = self.SetVar('Y', self.all_y, obj=0, echo=self.echo)
         self.z = self.SetVar('Z', self.etapas, obj=BASE_COST_RELOC, type=GRB.INTEGER, echo=self.echo)
-        self.ex = self.SetVar('EX', self.t_exile, obj=BASE_COST_EXILE, type=GRB.INTEGER, echo=self.echo)
+#        self.ex = self.SetVar('EX', self.t_exile, obj=BASE_COST_EXILE, type=GRB.INTEGER, echo=self.echo)
 
         self.Const1()
         self.Const2()
@@ -653,16 +656,18 @@ class TLSMODEL:
     @printer
     def BuildTuplesExile(self):
         """
-        Build the named tuples ['cont', 'etapa'] for exiling containers
+        Build the named tuples ['orig, 'cont', 'etapa'] for exiling containers
         :return:
         """
         # tuplas exilio
-        named_ex = namedtuple('named_ex', ['cont', 'etapa'])
+        named_ex = namedtuple('named_ex', ['orig','cont', 'etapa'])
         t_exilio = set()
-        for c in self.c_libres:
-            for e in self.etapas_activas[c]:
-                t_exilio.add(named_ex(c, e))
+        for t in self.t_y_libres:
+            if t.etapa in self.etapas_activas[t.cont]:
+                t_exilio.add(named_ex(t.pos, t.cont, t.etapa))
         self.t_exile = t_exilio
+
+
 
     @printer
     def AuxDicts(self):
@@ -762,6 +767,13 @@ class TLSMODEL:
             else:
                 self.v_je_c[t.dest, t.etapa].add([t.cont])
 
+        for t in self.t_exile:
+            if (t.orig, t.etapa) not in self.xe_ie_c:
+                self.xe_ie_c[t.orig, t.etapa] = set([t.cont])
+            else:
+                self.xe_ie_c[t.orig, t.etapa].add(t.cont)
+                
+
         self.c10set = set([(i, e) for i, c, e in self.t_y_libres.union(self.t_y_salen, self.t_y_llegan)])
 
     @printer
@@ -782,6 +794,8 @@ class TLSMODEL:
                 self.model.addConstr(self.y[key[1], key[0], 1] == self.Y0[key[0], key[1]], name='C1_{}'.format(counter))
                 counter += 1
 
+
+
     @printer
     def Const2(self):
         # C4: Un contenedor por posicion sum y[i,c,e] <= 1 Vi,e
@@ -800,10 +814,10 @@ class TLSMODEL:
         c4bset = set([(c, e) for i, c, e in self.all_y])
         for c, e in c4bset:
             lhs = gp.LinExpr(gp.quicksum(self.y[i, c, e] for i in self.positions if (i, c, e) in self.all_y))
-            if (c, e) in self.t_exile:
-                lhs.add(gp.LinExpr(gp.quicksum(self.ex[c, k] for k in self.etapas_activas[c] if k <= e )))
+            #if (c, e) in self.t_exile:
+            #    lhs.add(gp.LinExpr(gp.quicksum(self.ex[c, k] for k in self.etapas_activas[c] if k <= e )))
             if c in self.c_libres:
-                self.model.addConstr(lhs == 1, name='C3libres_{}'.format(counter))
+                self.model.addConstr(lhs <= 1, name='C3libres_{}'.format(counter))
             else:
                 self.model.addConstr(lhs <= 1, name='C3_{}'.format(counter))
             counter += 1
@@ -828,8 +842,10 @@ class TLSMODEL:
                     rhs.add(gp.LinExpr(gp.quicksum(self.x_l[i, j, c, e] for j in self.xl_ice_j[i, c, e])), -1)
                 if (i, c, e) in self.xl_jce_i:
                     rhs.add(gp.LinExpr(gp.quicksum(self.x_l[j, i, c, e] for j in self.xl_jce_i[i, c, e])))
-                if (c, e) in self.t_exile:
-                    rhs.add(gp.LinExpr(self.ex[c, e]), -1)
+                if (i,c,e,) in self.t_exile:
+                    rhs.add(gp.LinExpr(self.x_ex[i,c,e]), -1)
+                #if (c, e) in self.t_exile:
+                #    rhs.add(gp.LinExpr(self.ex[c, e]), -1)
                 self.model.addConstr(lhs == rhs, name="C4_FRE[{},{},{}]".format(i,c,e))
                 c2 += 1
 
@@ -956,6 +972,13 @@ class TLSMODEL:
                 w_e_jc[t.etapa] = set([(t.orig, t.cont)])
             else:
                 w_e_jc[t.etapa].add((t.orig, t.cont))
+        
+        xe_e_ic = {}
+        for t in self.t_exile:
+            if t.etapa not in xe_e_ic:
+                xe_e_ic[t.etapa] = set([(t.orig, t.cont)])
+            else:
+                xe_e_ic[t.etapa].add((t.orig, t.cont))
 
         for e in self.etapas:
             lhs = gp.LinExpr(0)
@@ -979,6 +1002,10 @@ class TLSMODEL:
                 lhs.add(gp.LinExpr(
                     (gp.quicksum(self.w[j, c, e] for j, c in w_e_jc[e]))
                 ))
+            if e in xe_e_ic:
+                lhs.add(gp.LinExpr(
+                    (gp.quicksum(self.x_ex[i,c,e] for i, c in xe_e_ic[e]))
+                ))
             self.model.addConstr(lhs <= 1, name='C7_{}'.format(counter))
             counter += 1
 
@@ -987,7 +1014,7 @@ class TLSMODEL:
         # C10: Prohibido salir de posiciones bloqueadas
         # sum_j,c x[i,j,c,e] <= 1 - sum_c y[i,c,e] for i in B for e
 
-        counter = 0
+ 
         for i, e in self.c10set:
             if e > 1:
                 if i in self.B.keys():
@@ -1003,9 +1030,11 @@ class TLSMODEL:
                                 lhs.add(gp.LinExpr(gp.quicksum(self.x_l[i, j, c, e] for j, c in self.xl_ie_jc[i, e])))
                             if (i, e) in self.w_ie_c.keys():
                                 lhs.add(gp.LinExpr(gp.quicksum(self.w[i, c, e] for c in self.w_ie_c[i, e])))
-                            aux_constr = self.model.addConstr(lhs <= rhs, name='C8_{}'.format(counter))
+                            if (i, e) in self.xe_ie_c.keys():
+                                lhs.add(gp.LinExpr(gp.quicksum(self.x_ex[i,c,e] for c in self.xe_ie_c[i, e])))
+                            aux_constr = self.model.addConstr(lhs <= rhs, name='C8[{},{},{}]'.format(i, e, k))
                             aux_constr.setAttr("Lazy", 1)
-                            counter += 1
+                            
 
     @printer
     def Const9(self):
@@ -1141,6 +1170,8 @@ class TLSMODEL:
         for t in self.t_x_long:
             self.x_l[t].start = 0
 
+
+
     def getModelStatus(self, outpath='', stats_file=None):
         status = self.model.Status
         solution = self.status_dic[status]
@@ -1153,8 +1184,10 @@ class TLSMODEL:
                 if self.z[t].x > 0:
                     z_count += 1
             n_exiled = 0
+            #for t in self.t_exile:
+            #    if self.ex[t].x > 0:
             for t in self.t_exile:
-                if self.ex[t].x > 0:
+                if self.x_ex[t].x > 0:
                     n_exiled += 1
             self.print_resumen_y(outpath)
             self.print_resumen_x(outpath)
@@ -1278,9 +1311,12 @@ class TLSMODEL:
         for t in self.t_v_llegan:
             if self.v[t].x > 0.1:
                 resumen.append([t.etapa, 'V', t.cont, 'LLEGA', t.dest, self.v[t].varName, self.v[t].x])
+        #for t in self.t_exile:
+        #    if self.ex[t].x > 0.1:
         for t in self.t_exile:
-            if self.ex[t].x > 0.1:
-                resumen.append([t.etapa, 'EX', t.cont, 'SOMEWHERE', 'EL LIMBO', self.ex[t].varName, self.ex[t].x])
+            if self.x_ex[t].x > 0: 
+                #resumen.append([t.etapa, 'EX', t.cont, 'SOMEWHERE', 'EL LIMBO', self.ex[t].varName, self.ex[t].x])
+                resumen.append([t.etapa, 'EX', t.cont, t.orig, 'EL LIMBO', self.x_ex[t].varName, self.x_ex[t].x])
 
         resumen.sort(key=lambda items: items[0])
         # for i in resumen:
