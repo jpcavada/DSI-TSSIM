@@ -11,8 +11,8 @@ import pathlib
 BASE_COST_CLOSE = 10
 BASE_COST_MEDIUM = 30
 BASE_COST_LONG = 100
-BASE_COST_RELOC = 20
-BASE_COST_EXILE = 200
+BASE_COST_RELOC = 30
+BASE_COST_EXILE = 70
 
 
 def printer(function):
@@ -87,6 +87,9 @@ class TLSMODEL:
 
     t_exile = set()
 
+    # Tuplas relocaciones
+    t_z = set()
+
     # Costos tuplas
     cost_x_c = {}
     cost_x_m = {}
@@ -148,6 +151,7 @@ class TLSMODEL:
         self.BuildTupleInbounds(echo=self.echo)
         self.BuildTupleOutbounds(echo=self.echo)
         self.BuildTuplesExile()
+        self.BuildNewTuples()
 
     def InitModel(self):
         self.model = gp.Model(name=self.model_name)
@@ -167,7 +171,6 @@ class TLSMODEL:
         self.w = self.SetVar('W', self.t_w_salen, obj=0, type=GRB.INTEGER, echo=self.echo)
         self.y = self.SetVar('Y', self.all_y, obj=0, echo=self.echo)
         self.z = self.SetVar('Z', self.etapas, obj=BASE_COST_RELOC, type=GRB.INTEGER, echo=self.echo)
-#        self.ex = self.SetVar('EX', self.t_exile, obj=BASE_COST_EXILE, type=GRB.INTEGER, echo=self.echo)
 
         self.Const1()
         self.Const2()
@@ -182,7 +185,7 @@ class TLSMODEL:
         self.Const8()
         self.Const9()
         self.Const10()
-        self.Const11()
+        #self.Const11()
 
     @printer
     def loadContainers(self, contenedores_file, echo=True):
@@ -667,6 +670,24 @@ class TLSMODEL:
                 t_exilio.add(named_ex(t.pos, t.cont, t.etapa))
         self.t_exile = t_exilio
 
+    @printer
+    def BuildNewTuples(self):
+        named_z = namedtuple('named_z', ['cont', 'dest', 'cont_blocked', 'etapa'])
+        for t in self.t_v_llegan: # 'named_v', ['dest', 'cont', 'etapa']
+            if t.dest in self.B_I.keys():
+                for b in self.B_I[t.dest]:
+                    for k in self.cont:
+                        if (b, k, t.etapa) in self.all_y: # namedtuple('named_y', ['pos', 'cont', 'etapa'])
+                            self.t_z.add(named_z(t.cont, b, k, t.etapa))
+
+        for t in self.t_x_close.union(self.t_x_medium):  # 'named_x', ['orig', 'dest', 'cont', 'etapa']
+            if t.dest in self.B_I.keys():
+                for b in self.B_I[t.dest]:
+                    for k in self.cont:
+                        if (b, k, t.etapa) in self.all_y:  # namedtuple('named_y', ['pos', 'cont', 'etapa'])
+                            self.t_z.add(named_z(t.cont, b, k, t.etapa))
+
+        print(len(self.t_z))
 
 
     @printer
@@ -1094,10 +1115,10 @@ class TLSMODEL:
         for c in self.c_salen + self.c_llegan + self.c_libres:
             cont_que_salen_antes[c] = []
             for b in self.cont:
-                if self.T[b] < self.T[c]:
-                    if c in cont_que_salen_antes.keys():
-                        cont_que_salen_antes[c].append(b)
-        counter = 0
+                if self.T[b] <= self.T[c] and b != c:
+                    cont_que_salen_antes[c].append(b)
+
+
         for j, c, e in c19set_c:
             if cont_que_salen_antes[c]:
                 if j in self.B_I.keys():
@@ -1110,9 +1131,8 @@ class TLSMODEL:
 
                     rhs2 = gp.LinExpr(len(self.B_I[j]) * gp.quicksum(self.x_c[i, j, c, e]
                                                                      for i in self.xc_jce_i[j, c, e]))
-                    aux_constr = self.model.addConstr(lhs >= rhs1 + rhs2, name='C11_{}'.format(counter))
+                    aux_constr = self.model.addConstr(lhs >= rhs1 + rhs2, name=f'C11C_[{j},{c},{e}]')
                     aux_constr.setAttr("Lazy", 1)
-                    counter += 1
 
         for j, c, e in c19set_m:
             if cont_que_salen_antes[c]:
@@ -1126,9 +1146,8 @@ class TLSMODEL:
 
                     rhs2 = gp.LinExpr(len(self.B_I[j]) * gp.quicksum(self.x_m[i, j, c, e]
                                                                      for i in self.xm_jce_i[j, c, e]))
-                    aux_constr = self.model.addConstr(lhs >= rhs1 + rhs2, name='C11_{}'.format(counter))
+                    aux_constr = self.model.addConstr(lhs >= rhs1 + rhs2, name=f'C11M_[{j},{c},{e}]')
                     aux_constr.setAttr("Lazy", 1)
-                    counter += 1
 
         for j, c, e in c19set_l:
             if cont_que_salen_antes[c]:
@@ -1142,9 +1161,23 @@ class TLSMODEL:
 
                     rhs2 = gp.LinExpr(len(self.B_I[j]) * gp.quicksum(self.x_l[i, j, c, e]
                                                                      for i in self.xl_jce_i[j, c, e]))
-                    aux_constr = self.model.addConstr(lhs >= rhs1 + rhs2, name='C11_{}'.format(counter))
+                    aux_constr = self.model.addConstr(lhs >= rhs1 + rhs2, name=f'C11L_[{j},{c},{e}]')
                     aux_constr.setAttr("Lazy", 1)
-                    counter += 1
+
+        for j, c, e in self.t_v_llegan:
+            if cont_que_salen_antes[c]:
+                if j in self.B_I.keys():
+                    lhs = gp.LinExpr(len(self.B_I[j]) * (self.z[e] + 1))
+                    rhs1 = gp.LinExpr()
+                    for k in self.B_I[j]:
+                        for b in cont_que_salen_antes[c]:
+                            if (k, b, e) in self.all_y:
+                                rhs1.add(gp.LinExpr(self.y[k, b, e]))
+
+                    rhs2 = gp.LinExpr(len(self.B_I[j]) * self.v[j, c, e])
+
+                    aux_constr = self.model.addConstr(lhs >= rhs1 + rhs2, name=f'C11S_[{j},{c},{e}]')
+                    aux_constr.setAttr("Lazy", 1)
 
     def BuildStartingSolution(self):
         # Lista de contenedores a definir:
@@ -1291,11 +1324,13 @@ class TLSMODEL:
         # print('impreso')
 
     def print_resumen_x(self, path=''):
+        movs_dic = {}
         # Resumen Movimientos
         resumen = []
         for t in self.t_x_close:
             if self.x_c[t].x > 0.1:
                 resumen.append([t.etapa, 'XC', t.cont, t.orig, t.dest, self.x_c[t].varName, self.x_c[t].x])
+
         for t in self.t_x_medium:
             if self.x_m[t].x > 0.1:
                 resumen.append([t.etapa, 'XM', t.cont, t.orig, t.dest, self.x_m[t].varName, self.x_m[t].x])
@@ -1326,6 +1361,9 @@ class TLSMODEL:
         f2.write('{:2} {:4} {:13} {:9} {:8}\n'.format('E', 'Tipo', 'Cont', 'Origen', 'Destino'))
         for i in resumen:
             f2.write('{:2} {:2} {:13} {:9} {:8}\n'.format(i[0], i[1], i[2], i[3], i[4]))
+            movs_dic[i[0]] = {'tipo': i[1], 'cont': i[2], 'orig': i[3], 'dest': i[4]}
+
+        json.dump(movs_dic, open('{}_moves.json'.format(path + self.model_name),'w+'))
         # print('Impreso x.txt')
 
 
@@ -1337,6 +1375,7 @@ def run(name, cont_file, pos_file, outpath='', echo=False, sf=''):
     MODEL.model.setParam('MIPFocus', 2)
     MODEL.model.setParam('Presolve', 1)
     MODEL.model.setParam('Method', 1)
+    MODEL.model.setParam('MIPGap', 0.0)
     MODEL.model.write('modelo.lp')
     MODEL.model.optimize()
     solution = MODEL.getModelStatus(outpath=outpath, stats_file=sf)
@@ -1347,6 +1386,7 @@ def run(name, cont_file, pos_file, outpath='', echo=False, sf=''):
 
 
 if __name__ == "__main__":
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("cont_file")
     parser.add_argument("pos_file")
@@ -1362,6 +1402,6 @@ if __name__ == "__main__":
                  outpath=args.outpath,
                  echo=args.echo,
                  sf=args.stats_file)
-
+    """
     # print(salida)
-    # run('test', 'inputs/95040_contenedores.json', 'inputs/95040_posiciones.json', echo=False)
+    run('test', 'DEBUG/86946_contenedores.json', 'DEBUG/86946_posiciones.json', echo=True)

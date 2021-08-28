@@ -101,14 +101,14 @@ class TLSSIM:
         self.logger.setLevel(logging.INFO)
         file_handler = logging.FileHandler(OUTPUT_FILES_FOLDER + INSTANCE_NAME + '.log', 'a')
         file_handler.setLevel(logging.ERROR)
-        #file_handler.setLevel(logging.INFO)
+        # file_handler.setLevel(logging.INFO)
 
         self.logger.addHandler(file_handler)
 
         self.Box_arrival_list = None
         self.controller = None
 
-    def runSimulation(self, quiet=False, tInicial=0, tFinal=FINAL_SIM_CLOCK, export=""):
+    def runSimulation(self, quiet=False, tInicial=0, tFinal=FINAL_SIM_CLOCK, export="", controller=True):
         global patio
         try:
             console_handler = logging.StreamHandler()
@@ -211,14 +211,13 @@ class TLSSIM:
             '''
             MODELO DE CONTROL
             '''
-
             self.controller = control.Controller(patio)
-            sim_enviroment.process(self.GEN_start_Controller(self.controller,
-                                                              sim_enviroment,
-                                                              patio,
-                                                              self.Box_arrival_list,
-                                                              utilidades.toSimTime(60, 9, 0)),
-                                   )
+            if controller:
+                sim_enviroment.process(self.GEN_start_Controller(self.controller,
+                                                                 sim_enviroment,
+                                                                 utilidades.toSimTime(60, 9, 0)),
+                                       )
+
             """
             sim_enviroment.process(self.GEN_export_sim_status(sim_enviroment,
                                                               patio,
@@ -428,7 +427,8 @@ class TLSSIM:
 
                     else:
                         destiny_block, destiny_bay, decision_string = yard.YRD_BoxAllocation(arriving_box)
-                        print("Controller no encontro, SIM pone a {} en {}".format(arriving_box.BOX_getName(), destiny_bay))
+                        print("Controller no encontro, SIM pone a {} en {}".format(arriving_box.BOX_getName(),
+                                                                                   destiny_bay))
 
                 else:  # Si controller no esta activo toma el control
                     destiny_block, destiny_bay, decision_string = yard.YRD_BoxAllocation(arriving_box)
@@ -439,7 +439,7 @@ class TLSSIM:
                     self.logger.info(
                         "[" + str(env.now) + "] Grua moviendo a " + str(arriving_box.BOX_getName()) + " a " + str(
                             destiny_bay) + " por " + str(move_cost) + " min")
-                    yield env.timeout(move_cost)
+                    yield env.timeout(0)  # move_cost)
                     data_execution_time = env.now
                     self.logger.info(
                         "[" + str(env.now) + "] Grua finaliza movimiento de " + str(arriving_box.BOX_getName()))
@@ -522,7 +522,7 @@ class TLSSIM:
                                 reloc_succ, reloc_cost = yard.YRD_relocateBox(blocker, destiny_bay)
                                 if reloc_succ:
                                     data_reloc_call = env.now
-                                    yield env.timeout(reloc_cost)
+                                    yield env.timeout(0)  # reloc_cost)
                                     self.logger.info(
                                         "[{}] RELOC(C): se recoloco {} a {}, costo {}".format(env.now, blocker,
                                                                                               destiny_bay, reloc_cost))
@@ -564,7 +564,7 @@ class TLSSIM:
                                         reloc_succ, reloc_cost = yard.YRD_relocateBox(blocker, destiny_bay)
                                         if reloc_succ:
                                             data_reloc_call = env.now
-                                            yield env.timeout(reloc_cost)
+                                            yield env.timeout(0)  # reloc_cost)
                                             self.logger.info(
                                                 "[{}] RELOC: se recoloco {} a {}, costo {}".format(env.now, blocker,
                                                                                                    destiny_bay,
@@ -582,7 +582,7 @@ class TLSSIM:
                     remove_succ, remove_cost = yard.YRD_removeBox(leaving_box, env.now)
 
                     if remove_succ:
-                        yield env.timeout(remove_cost)
+                        yield env.timeout(0)  # remove_cost)
                         self.logger.info(
                             "[{}] Retirando {} con la grua, costo {}".format(env.now, leaving_box, remove_cost))
                         data_removal_execute = env.now
@@ -746,11 +746,10 @@ class TLSSIM:
 
             self.run_status = int(((env.now / FINAL_SIM_CLOCK) * 100 + 1))
 
-    def GEN_start_Controller(self, controller, env, yard, arrivals, controler_start_time):
+    def GEN_start_Controller(self, controller, env, controler_start_time):
         yield env.timeout(controler_start_time)
-        self.logger.critical("({}) Inicio Controller {}".format(env.now, utilidades.toRealTime(env.now)))
+        self.logger.critical("({}) Inicio Controller {}".format(env.now, utilidades.print_real_time(env.now)))
         controller.status = 1
-        # controller.runModel(env.now, arrivals)
 
     def GEN_export_sim_status(self, env, yard, arrivals,
                               export_interval=1440, look_ahead_time=1440, file_name=JSON_EXPORT_PATH):
@@ -817,13 +816,14 @@ if __name__ == '__main__':
     import time
 
     # sim = TLSSIM()
-    sim = TLSSIM(name="SIM3",
-                 outputdir="./INSTANCES/DEBUG/Salidas/",
-                 criteria="MM",
-                 arrivals="./INSTANCES/INSTANCES_180D_F2_100/arrivals_13.ini")
+    sim = TLSSIM(name="F2_01",
+                 # outputdir="./INSTANCES/DEBUG/Salidas/",
+                 outputdir="./INSTANCES/RESULTADOS/CC-02/",
+                 criteria="MM-S",
+                 arrivals="INSTANCES/INSTANCES_180D_F2_100/arrivals_13.ini")
     start_time = time.time()
     # sim.runSimulation(quiet=True, tInicial=0, tFinal=START_RECOUNT_TIME, export="p.pickle")
-    sim.runSimulation(quiet=False, tInicial=0, tFinal=FINAL_SIM_CLOCK, export="p.pickle")
+    sim.runSimulation(quiet=False, tInicial=0, tFinal=FINAL_SIM_CLOCK, export="p.pickle", controller=True)
 
     # sim.runSimulation(quiet=False, tInicial=START_RECOUNT_TIME, tFinal=FINAL_SIM_CLOCK, export="p.pickle")
     end_time = time.time()

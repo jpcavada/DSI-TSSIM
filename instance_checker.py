@@ -1,5 +1,5 @@
-INPUT = 'INSTANCES/INSTANCES_180D_F2_100/arrivals_13.ini'
-OUTPUT = 'INSTANCES/INSTANCES_180D_F2_100/arrivals_14.ini'
+INPUT = 'INSTANCES/INSTANCES_180D_F2_100/arrivals_12.ini'
+OUTPUT = 'INSTANCES/INSTANCES_180D_F2_100/arrivals_13.ini'
 
 
 f = open(INPUT)
@@ -24,6 +24,7 @@ for cont, i in to_change.items():
     while j in dates:
         j += 1
     original[cont][i] = j
+    dates.add(j)
     print("nuevo {}".format(original[cont]))
 
 n = open(OUTPUT, 'w+')

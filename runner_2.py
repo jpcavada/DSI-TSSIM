@@ -1,11 +1,12 @@
-from multiprocessing import Pool
+
 import threading
 import tqdm
-import subprocess
-import os
+import pathlib
 import Sim_entradas_salidas_2 as sim
 import time
 import sys
+import subprocess
+import os
 
 #INS_NAME = "180D_MM_"
 #INS_DIR = "INSTANCES\INSTANCES_180D_F18\\"
@@ -13,7 +14,7 @@ import sys
 #OUT_DIR = "INSTANCES\INSTANCES_180D_F18\Salidas\\MM\\"
 
 A = [
-    ["ST_180D_F18_100_MM_", "INSTANCES/Resultados/F18_100_ST_E_MM-S/", "MM-S", "INSTANCES/INSTANCES_180D_F18_100_ST/"],
+    ["MM-S", "INSTANCES/RESULTADOS/MM-S/", "MM-S", "INSTANCES/F18_1W_Control/"],
  #   ["180D_F18_100_RI_", "INSTANCES\Resultados\F18_100\Versus\RI\\", "RI", "INSTANCES\INSTANCES_180D_F18_100\\"],
  #   ["180D_F18_100_RIL_", "INSTANCES\Resultados\F18_100\Versus\RIL\\", "RIL", "INSTANCES\INSTANCES_180D_F18_100\\"],
   #  ["180D_F18_100_MM_", "INSTANCES\Resultados\F18_100\Versus\MM\\", "MM", "INSTANCES\INSTANCES_180D_F18_100\\"],
@@ -32,7 +33,7 @@ A = [
 
 #Threading Config
 MAX_THREADS = 12
-N=1
+N=7
 sema = threading.Semaphore(MAX_THREADS)
 
 def caller(main):
@@ -61,7 +62,12 @@ print("Loaded {} scenarios".format(len(A)))
 for j in A:
     run_results = ""
     print("Running {} replicas for scenario {}".format(N, j[0][:-1]))
+    p = pathlib.Path(j[3]).glob('*.ini')
+    print(p)
+    #arrivals = [x for x in p if x.is_file()]
+    #print(arrivals)
     for i in tqdm.tqdm(range(1, N+1)):
+
         tqdm.desc = j[0]
         name = j[0] + str(i)
         arrival = j[3] + "arrivals_" + str(i) + ".ini"

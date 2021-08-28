@@ -1,9 +1,14 @@
 import pathlib as pl
+import shutil
 import export_JSON_data
 import subprocess
 import os
 
 import utilidades
+import yard_draw
+
+DRAW = True
+DEBUGMODE = True
 
 
 class Controller:
@@ -20,6 +25,13 @@ class Controller:
         self.name = 'test'
 
         self.all_bays = set()  # Set de todas ls bays que reciben o sacan un cont.
+
+        if DEBUGMODE:
+            self.debug_path = pl.Path("optimiza", "DEBUG")
+            self.debug_path.mkdir(parents=True, exist_ok=True)
+            for child in self.debug_path.iterdir():
+                if child.is_file():
+                    pl.Path.unlink(child)
 
     def CheckModelStatus(self):
         print("HP : {}/{}".format(len(self.movements), self.model_life))
@@ -39,10 +51,14 @@ class Controller:
         self.name = str(simtime)
         self.movements = []
         self.all_bays.clear()
+
         # Delete all temporary files before proceeding
         for child in self.tempPath.iterdir():
             if child.is_file():
+                if DEBUGMODE:
+                    shutil.copy2(child, pl.Path.joinpath(self.debug_path, child.name))
                 pl.Path.unlink(child)
+
 
         # Export current simulation status
         export_JSON_data.export_JSON_status(simtime, self.yard, arrivals, self.look_ahead_time,
@@ -59,11 +75,19 @@ class Controller:
         # print("pos", str(posiciones_file))
         # print("out", str(self.tempPath))
 
+
         # Run optimization modelo
-        print('[{}] Corriendo Modelo'.format(utilidades.toRealTime(simtime)))
+        print('[{}] Corriendo Modelo'.format(utilidades.print_real_time(simtime)))
         pl.Path.mkdir(pl.Path.joinpath(self.tempPath, 'model_logs'), exist_ok=True)
         model_log = open(pl.Path.joinpath(self.tempPath, 'model_logs', self.name + '.log'), 'w')
-        resumen = subprocess.run(["python",
+
+        # Print Yard Status
+        if DRAW:
+            pl.Path.mkdir(pl.Path.joinpath(self.tempPath, 'images'), exist_ok=True)
+            yard_draw.draw(self.yard, pl.Path.joinpath(self.tempPath, 'images', self.name + '.png'),
+                           cont_status=contenedores_file)
+
+        resumen = subprocess.run(["python3",
                                   str(self.modelPath),
                                   str(contenedores_file),
                                   str(posiciones_file),
@@ -71,9 +95,9 @@ class Controller:
                                   "-o", str(self.tempPath) + os.path.sep,
                                   "-s", "Resumen",
                                   "-e"],
-                                 stdout=model_log, stderr=model_log)
+                                 stdout=model_log, stderr=model_log
+                                 )
         # ["python3", "modelo.py", contenedores_file, posiciones_file, "-n "+i, "-o="+out_PATH, "-s=RESUMEN"]
-
 
         with open(pl.Path.joinpath(self.tempPath, 'status')) as sf:
             for line in sf.readlines():
@@ -116,8 +140,11 @@ class Controller:
                                 for bb in block.BLK_getBlockingBaysList(bay):
                                     self.all_bays.add(bb)
 
-
             self.model_life = len(self.movements)
+            if DRAW:
+                pl.Path.mkdir(pl.Path.joinpath(self.tempPath, 'images'), exist_ok=True)
+                yard_draw.draw(self.yard, pl.Path.joinpath(self.tempPath, 'images', self.name + 'sol.png'),
+                               cont_status=contenedores_file, sol_file=pl.Path.joinpath(self.tempPath, self.name + '_moves.json'))
         else:
             self.movements = []
             self.needUpdate = True
@@ -127,22 +154,22 @@ class Controller:
         #   print(m)
 
     def getArrivalPosition(self, box_name, simtime, arrivals):
-        print("[{}] Arrival buscanco posicion para {}".format(simtime, box_name))
+  #      print("[{}] Arrival buscanco posicion para {}".format(simtime, box_name))
         self.CheckModelStatus()
         if self.needUpdate:
-            print("Modelo desactualizado...corriendo")
+    #        print("Modelo desactualizado...corriendo")
             self.runModel(simtime, arrivals)
         nextMove = self.getNextMove(box_name, 'V')
         if nextMove is not None:
             return nextMove['dest']
         else:
-            print("{} Arrival no encontrado...corriendo modelo de nuevo".format(box_name))
+   #         print("{} Arrival no encontrado...corriendo modelo de nuevo".format(box_name))
             self.runModel(simtime, arrivals)
             nextMove = self.getNextMove(box_name, 'V')
             if nextMove is not None:
                 return nextMove['dest']
             else:
-                print("{} no encontrada de nuevo...dejo al sim decider este".format(box_name))
+     #           print("{} no encontrada de nuevo...dejo al sim decider este".format(box_name))
                 return 0
 
     def getRemovalMoves(self, box_name, simtime, arrivals):
@@ -158,7 +185,7 @@ class Controller:
                     blocker_moves.append([bm['cont'], 'EX'])
                 else:
                     blocker_moves.append([bm['cont'], bm['dest']])
-            print('{} Removal encontrado, con {}'.format(box_name, blocker_moves))
+    #        print('{} Removal encontrado, con {}'.format(box_name, blocker_moves))
             return blocker_moves
         else:
             print("{} Removal no encontrado...corriendo modelo de nuevo".format(box_name))
@@ -170,10 +197,10 @@ class Controller:
                         blocker_moves.append([bm['cont'], 'EX'])
                     else:
                         blocker_moves.append([bm['cont'], bm['dest']])
-                print('{} Removal encontrado, con {}'.format(box_name, blocker_moves))
+     #           print('{} Removal encontrado, con {}'.format(box_name, blocker_moves))
                 return blocker_moves
             else:
-                print("{} Removal no encontrado de nuevo...dejo al sim decidir este".format(box_name))
+      #          print("{} Removal no encontrado de nuevo...dejo al sim decidir este".format(box_name))
                 return 0
 
     def getNextMove(self, cont, tipo):
@@ -182,6 +209,6 @@ class Controller:
             move = self.movements[move_index]
             if move['cont'] == cont and move['tipo'] == tipo:
                 nextMove = self.movements.pop(move_index)
-                print("encontre el movimiento para {}".format(cont))
+       #         print("encontre el movimiento para {}".format(cont))
                 break
         return nextMove

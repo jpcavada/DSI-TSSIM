@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import scipy.stats
-
+import utilidades
 '''
 Calcula estadisticas
 Promedio de Relocaciones
@@ -23,8 +23,8 @@ plt.ioff()
 # START_RECOUNT_TS = 43200
 # END_RECOUNT_TS = 86400
 END_RECOUNT_TS = 259200
-#START_RECOUNT_TS = 86400
-START_RECOUNT_TS = 0
+# START_RECOUNT_TS = 86400
+START_RECOUNT_TS = utilidades.toSimTime(60, 0, 0)
 MOV_COST = [1, 3, 7]
 
 
@@ -113,37 +113,37 @@ def main_ocupacion():
     # CODIGO PARA GENERAR GRAFICOS DE OCUPACION
 
     f2 = getOccupationStats(r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F2\antigups\MM")
-    #f3 = getOccupationStats(r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F3\MM")
+    # f3 = getOccupationStats(r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F3\MM")
     f25 = getOccupationStats(r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F25\MM")
-    #f175 = getOccupationStats(r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\MM")
+    # f175 = getOccupationStats(r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\MM")
     f18 = getOccupationStats(r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18\MM")
 
     start_point = 90
     ro_f2 = numpy.round(numpy.average(f2[start_point:]) / 768, 2)
-    #ro_f3 = numpy.round(numpy.average(f3[start_point:]) / 768, 2)
+    # ro_f3 = numpy.round(numpy.average(f3[start_point:]) / 768, 2)
     ro_f25 = numpy.round(numpy.average(f25[start_point:]) / 768, 2)
-    #ro_f175 = numpy.round(numpy.average(f175[start_point:]) / 768, 2)
+    # ro_f175 = numpy.round(numpy.average(f175[start_point:]) / 768, 2)
     ro_f18 = numpy.round(numpy.average(f18[start_point:]) / 768, 2)
 
     plt.rc('font', size=10)
     plt.rc('axes', titlesize=12)
     plt.figure()
-    #plt.title("N de Contenedores en el patio")
+    # plt.title("N de Contenedores en el patio")
     plt.axhline(y=768, color='blue', linestyle='-')
     plt.axvline(x=90, color="grey", linestyle="--")
     plt.plot(f2, label="Medium", color="C1")
-    #plt.plot(f3, label="f3", color="C1")
+    # plt.plot(f3, label="f3", color="C1")
     plt.plot(f25, label="Low", color="C2")
-    #plt.plot(f175, label="f175", color="C3")
+    # plt.plot(f175, label="f175", color="C3")
     plt.plot(f18, color="C3")
 
     plt.annotate(r"Medium ($\rho$={})".format(ro_f2), xy=(175, f2[-1]), xytext=(0, -8), textcoords='offset points',
                  ha='right', va="top", color="C1")
-    #plt.annotate(r"F3 ($\rho$={})".format(ro_f3), xy=(175, f3[-1]), xytext=(0, -8), textcoords='offset points',
+    # plt.annotate(r"F3 ($\rho$={})".format(ro_f3), xy=(175, f3[-1]), xytext=(0, -8), textcoords='offset points',
     #             ha='right', va="top", color="C1")
     plt.annotate(r"Low ($\rho$={})".format(ro_f25), xy=(175, f25[-1]), xytext=(0, -8), textcoords='offset points',
                  ha='right', va="top", color="C2")
-    #plt.annotate(r"F1.75 ($\rho$={})".format(ro_f175), xy=(175, f175[-1]), xytext=(0, 10), textcoords='offset points',
+    # plt.annotate(r"F1.75 ($\rho$={})".format(ro_f175), xy=(175, f175[-1]), xytext=(0, 10), textcoords='offset points',
     #            ha='right', va="bottom", color="C3")
     plt.annotate(r"High ($\rho$={})".format(ro_f18), xy=(175, f18[-1]), xytext=(0, -6), textcoords='offset points',
                  ha='right', va="top", color="C3")
@@ -153,28 +153,29 @@ def main_ocupacion():
     plt.xlim(left=0)
     plt.xticks(np.arange(0, 190, step=30))
 
+
 def main_relocaciones():
-    scenario_path = [(r"./INSTANCES/Resultados/F18_MM", "DET"),
-                     (r"./INSTANCES/Resultados/F18_100_ST", "ST <= bloquea"),
-                     (r"./INSTANCES/Resultados/F18_100_ST_E", "ST < bloquea"),
-                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\MM-S", "MM-S"),
-                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI", "RI"),
-                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI-C", "RI-C "),
-                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI-S", "RI-S"),
-                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL", "RIL"),
-                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL-C", "RIL-C"),
-                    # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL-S", "RIL-S")
+    scenario_path = [(r"./INSTANCES/RESULTADOS/CONTROL", "Control"),
+                     (r"./INSTANCES/RESULTADOS/MM", "MM"),
+                     (r"./INSTANCES/RESULTADOS/MM-S", "MM-S"),
+                     # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\MM-S", "MM-S"),
+                     # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI", "RI"),
+                     # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI-C", "RI-C "),
+                     # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RI-S", "RI-S"),
+                     # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL", "RIL"),
+                     # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL-C", "RIL-C"),
+                     # (r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F18_100\RIL-S", "RIL-S")
                      ]
 
-    scenario_name = "Comparacion MM sin hora de salida"
+    scenario_name = "Comparacion Control - MM"
     rho = 0.77
 
     box_plot_data = []
     scenario_names = []
 
-    close_data = []     # N° de relocaciones close de cada replica
-    medium_data = []    # N° de relocaciones medium de cada replica
-    long_data = []      # N° de relocaciones large de cada replica
+    close_data = []  # N° de relocaciones close de cada replica
+    medium_data = []  # N° de relocaciones medium de cada replica
+    long_data = []  # N° de relocaciones large de cada replica
 
     CI_data = []
 
@@ -192,7 +193,7 @@ def main_relocaciones():
     # BOXPLOT
     fig, ax = plt.subplots(3)
 
-    fig.suptitle(r'SCENARIO F18 100 Replicas ($\rho$=0.77 )')
+    fig.suptitle(r'SCENARIO F18 7 Replicas ($\rho$=0.77 )')
 
     ax[0].set_title(scenario_name)
     ax[0].set_ylabel("Number of Relocations")
@@ -270,9 +271,9 @@ def main_relocaciones():
 # for i in box_plot_data:
 #     print(i)
 def main_ocupation_by_replica():
-    scenarios = [r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F2\MM-S",
-                 r"C:\Users\Juampi\Docum ents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F2\RIL-C",
-                 r"C:\Users\Juampi\Documents\GitHub\DSI-TSSIM\INSTANCES\Resultados\F2\RIL-S"
+    scenarios = [r"INSTANCES/RESULTADOS/CONTROL",
+                 r"INSTANCES/RESULTADOS/MM",
+                 r"INSTANCES/RESULTADOS/MM-S",
                  ]
 
     box_count = []
@@ -527,6 +528,6 @@ if __name__ == '__main__':
     # main_count_fails()
     # main_ocupation_by_replica()
     # main_ocupacion()
-     main_relocaciones()
-    #main_arrivals_and_removals()
-    # main_decisiones()
+    main_relocaciones()
+# main_arrivals_and_removals()
+# main_decisiones()

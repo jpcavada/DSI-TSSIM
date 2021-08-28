@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-OUTPUT_FOLDER = "INSTANCES/INSTANCES_180D_F18_100_ST"
+OUTPUT_FOLDER = "INSTANCES/INSTANCES_7D_F18_5"
 random_state = None
 random_state2 = None  # Utilizado para la instancias del modelo estocastico
 T_INICIAL = 8 * 60
@@ -229,7 +229,7 @@ if __name__ == '__main__':
     main(443, 'arrivals_1.ini')
     main(650, 'arrivals_2.ini')
     main(429, 'arrivals_3.ini')
-    main(797, 'arrivals_4.ini')
+    main(797, 'arrivals_11.ini')
     main(494, 'arrivals_5.ini')
     main(454, 'arrivals_6.ini')
     main(770, 'arrivals_7.ini')
@@ -248,7 +248,7 @@ if __name__ == '__main__':
     main(665, 'arrivals_20.ini')
     main(687, 'arrivals_21.ini')
     main(678, 'arrivals_22.ini')
-    main(697, 'arrivals_23.ini')
+    main(697, 'arrivals_2.ini')
     main(518, 'arrivals_24.ini')
     main(273, 'arrivals_25.ini')
     '''
@@ -258,7 +258,7 @@ if __name__ == '__main__':
     main(788, 'arrivals_1.ini')
     main(747, 'arrivals_2.ini')
     main(580, 'arrivals_3.ini')
-    main(640, 'arrivals_4.ini')
+    main(640, 'arrivals_11.ini')
     main(430, 'arrivals_5.ini')
     main(207, 'arrivals_6.ini')
     main(546, 'arrivals_7.ini')
@@ -277,7 +277,7 @@ if __name__ == '__main__':
     main(528, 'arrivals_20.ini')
     main(470, 'arrivals_21.ini')
     main(385, 'arrivals_22.ini')
-    main(823, 'arrivals_23.ini')
+    main(823, 'arrivals_2.ini')
     main(983, 'arrivals_24.ini')
     main(919, 'arrivals_25.ini')
     main(341, 'arrivals_26.ini')
@@ -285,7 +285,7 @@ if __name__ == '__main__':
     main(297, 'arrivals_28.ini')
     main(590, 'arrivals_29.ini')
     main(480, 'arrivals_30.ini')
-    main(326, 'arrivals_31.ini')
+    main(326, 'arrivals_41.ini')
     main(710, 'arrivals_32.ini')
     main(665, 'arrivals_33.ini')
     main(425, 'arrivals_34.ini')
@@ -295,7 +295,7 @@ if __name__ == '__main__':
     main(792, 'arrivals_38.ini')
     main(333, 'arrivals_39.ini')
     main(147, 'arrivals_40.ini')
-    main(211, 'arrivals_41.ini')
+    main(211, 'arrivals_32.ini')
     main(551, 'arrivals_42.ini')
     main(320, 'arrivals_43.ini')
     main(885, 'arrivals_44.ini')
@@ -332,7 +332,7 @@ if __name__ == '__main__':
     main(940, 'arrivals_75.ini')
     main(137, 'arrivals_76.ini')
     main(449, 'arrivals_77.ini')
-    main(118, 'arrivals_78.ini')
+    main(118, 'arrivals_61.ini')
     main(797, 'arrivals_79.ini')
     main(841, 'arrivals_80.ini')
     main(637, 'arrivals_81.ini')
